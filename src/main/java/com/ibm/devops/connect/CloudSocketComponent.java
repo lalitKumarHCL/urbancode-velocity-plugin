@@ -210,11 +210,11 @@ public class CloudSocketComponent {
                             String encodedString = getEncodedString(plainCredentials);
                             String authorizationHeader = "Basic " + encodedString;
                             String rootUrl = Jenkins.getInstance().getRootUrl();
-                            HttpResponse<String> response = Unirest.get(rootUrl+"job/"+jobName.replaceAll(" ", "%20")+"/lastBuild/consoleText")
+                            HttpResponse<String> response = Unirest.get(rootUrl+"job/"+jobName.replaceAll("/", "/job/").replaceAll(" ", "%20")+"/lastBuild/consoleText")
                                 .header("Authorization", authorizationHeader)
                                 .asString();
                             String lastBuildConsole = response.getBody().toString();
-                            boolean isFound = lastBuildConsole.contains(workId); // true
+                            boolean isFound = lastBuildConsole.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId); // true
                             if(isFound==true){
                                 log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
                             }
