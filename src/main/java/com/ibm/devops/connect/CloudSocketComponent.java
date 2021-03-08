@@ -28,6 +28,18 @@ import java.io.IOException;
 import com.ibm.devops.connect.Endpoints.EndpointManager;
 
 
+import java.security.MessageDigest;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.Cipher;
+import net.sf.json.*;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+
+
 public class CloudSocketComponent {
 
     public static final Logger log = LoggerFactory.getLogger(CloudSocketComponent.class);
@@ -81,6 +93,30 @@ public class CloudSocketComponent {
             return false;
         }
         return conn.isOpen();
+    }
+    
+    private static byte[] toByte(String hexString) {
+        int len = hexString.length()/2;
+        byte[] result = new byte[len];
+        for (int i = 0; i < len; i++) {
+            result[i] = Integer.valueOf(hexString.substring(2*i, 2*i+2), 16).byteValue();
+        }
+        return result;
+    }
+
+    private static String decrypt(String seed, String encrypted) throws Exception {
+        byte[] keyb = seed.getBytes("UTF-8");
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] thedigest = md.digest(keyb);
+        SecretKeySpec skey = new SecretKeySpec(thedigest, "AES");
+        Cipher dcipher = Cipher.getInstance("AES");
+        dcipher.init(Cipher.DECRYPT_MODE, skey);
+        byte[] clearbyte = dcipher.doFinal(toByte(encrypted));
+        return new String(clearbyte, "UTF-8");
+    }
+
+    private static String getEncodedString(String credentials){  
+        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));   
     }
 
     public void connectToAMQP() throws Exception {
@@ -155,10 +191,42 @@ public class CloudSocketComponent {
                         boolean connected = CloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
                         String message = new String(body, "UTF-8");
-                        System.out.println(" [x] Received '" + message + "'");
-
-                        CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
-                        cloudWorkListener.call("startJob", message);
+                        String payload = null;
+                        String syncToken = getSyncToken();
+                        try {
+                            payload = decrypt(syncToken, message.toString());
+                        } catch (Exception e) {
+                            //TODO handle decryption error
+                            System.out.println("Unable to decrypt");
+                        }
+                        //TODO Don't make this an array in the silly way that I have.  I just want this to work
+                        JSONArray incomingJobs = JSONArray.fromObject("[" + payload + "]");
+                        JSONObject incomingJob = incomingJobs.getJSONObject(0);
+                        String workId = incomingJob.getString("id");
+                        String jobName = incomingJob.getString("fullName");
+                        try {
+                            StandardUsernamePasswordCredentials credentials = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();          
+                            String plainCredentials = credentials.getUsername() + ":" + credentials.getPassword().getPlainText();
+                            String encodedString = getEncodedString(plainCredentials);
+                            String authorizationHeader = "Basic " + encodedString;
+                            String rootUrl = Jenkins.getInstance().getRootUrl();
+                            HttpResponse<String> response = Unirest.get(rootUrl+"job/"+jobName.replaceAll(" ", "%20")+"/lastBuild/consoleText")
+                                .header("Authorization", authorizationHeader)
+                                .asString();
+                            String lastBuildConsole = response.getBody().toString();
+                            boolean isFound = lastBuildConsole.contains(workId); // true
+                            if(isFound==true){
+                                log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
+                            }
+                            else{
+                                System.out.println(" [x] Received '" + message + "'");
+                                CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
+                                cloudWorkListener.call("startJob", message);   
+                            }    
+                        } catch (UnirestException e) {
+                            //TODO: handle exception
+                            log.error("UnirestException: Failed to get logs of lastBuild", e);
+                        }
                     }
                 }
             };
