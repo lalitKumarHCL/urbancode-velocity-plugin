@@ -210,7 +210,9 @@ public class CloudSocketComponent {
                             String encodedString = getEncodedString(plainCredentials);
                             String authorizationHeader = "Basic " + encodedString;
                             String rootUrl = Jenkins.getInstance().getRootUrl();
-                            HttpResponse<String> response = Unirest.get(rootUrl+"job/"+jobName.replaceAll("/", "/job/").replaceAll(" ", "%20")+"/lastBuild/consoleText")
+                            String path = "job/"+jobName.replaceAll("/", "/job/")+"/lastBuild/consoleText";
+                            String finalUrl = rootUrl+path;
+                            HttpResponse<String> response = Unirest.get(finalUrl)
                                 .header("Authorization", authorizationHeader)
                                 .asString();
                             String lastBuildConsole = response.getBody().toString();
