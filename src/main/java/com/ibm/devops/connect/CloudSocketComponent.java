@@ -38,6 +38,7 @@ import com.mashape.unirest.http.exceptions.UnirestException;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
 import java.util.Base64;
 import java.nio.charset.StandardCharsets;
+import org.apache.http.client.utils.URIBuilder;
 
 
 public class CloudSocketComponent {
@@ -210,8 +211,16 @@ public class CloudSocketComponent {
                             String encodedString = getEncodedString(plainCredentials);
                             String authorizationHeader = "Basic " + encodedString;
                             String rootUrl = Jenkins.getInstance().getRootUrl();
-                            String path = "job/"+jobName.replaceAll("/", "/job/")+"/lastBuild/consoleText";
-                            String finalUrl = rootUrl+path;
+                            String path = "/job/"+jobName.replaceAll("/", "/job/")+"/lastBuild/consoleText";
+                            String finalUrl = null;
+                            try {
+                                URIBuilder builder = new URIBuilder(rootUrl);
+                                builder.setPath(path); 
+                                finalUrl = builder.toString();  
+                            } catch (Exception e) {
+                                //TODO: handle exception
+                                log.error("Caught error while building console log url: ", e);
+                            }
                             HttpResponse<String> response = Unirest.get(finalUrl)
                                 .header("Authorization", authorizationHeader)
                                 .asString();
