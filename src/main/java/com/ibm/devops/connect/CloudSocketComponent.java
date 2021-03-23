@@ -218,7 +218,6 @@ public class CloudSocketComponent {
                                 builder.setPath(path); 
                                 finalUrl = builder.toString();  
                             } catch (Exception e) {
-                                //TODO: handle exception
                                 log.error("Caught error while building console log url: ", e);
                             }
                             HttpResponse<String> response = Unirest.get(finalUrl)
