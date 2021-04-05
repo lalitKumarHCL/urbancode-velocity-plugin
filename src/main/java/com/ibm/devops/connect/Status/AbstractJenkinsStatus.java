@@ -270,6 +270,7 @@ public abstract class AbstractJenkinsStatus {
         result.put("draData", cloudCause.getDRADataJson());
         result.put("crProperties", crAction.getCrProperties());
         result.put("envProperties", crAction.getEnvProperties());
+        result.put("requestor", Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj().getUsername());
 
         return result;
     }
