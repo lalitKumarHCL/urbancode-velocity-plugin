@@ -205,38 +205,72 @@ public class CloudSocketComponent {
                         JSONObject incomingJob = incomingJobs.getJSONObject(0);
                         String workId = incomingJob.getString("id");
                         String jobName = incomingJob.getString("fullName");
+                        StandardUsernamePasswordCredentials credentials = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();          
+                        String plainCredentials = credentials.getUsername() + ":" + credentials.getPassword().getPlainText();
+                        String encodedString = getEncodedString(plainCredentials);
+                        String authorizationHeader = "Basic " + encodedString;
+                        String rootUrl = Jenkins.getInstance().getRootUrl();
+                        String path = "/job/"+jobName.replaceAll("/", "/job/")+"/api/json";
+                        String finalUrl = null;
+                        String buildDetails = null;
                         try {
-                            StandardUsernamePasswordCredentials credentials = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();          
-                            String plainCredentials = credentials.getUsername() + ":" + credentials.getPassword().getPlainText();
-                            String encodedString = getEncodedString(plainCredentials);
-                            String authorizationHeader = "Basic " + encodedString;
-                            String rootUrl = Jenkins.getInstance().getRootUrl();
-                            String path = "/job/"+jobName.replaceAll("/", "/job/")+"/lastBuild/consoleText";
-                            String finalUrl = null;
-                            try {
-                                URIBuilder builder = new URIBuilder(rootUrl);
-                                builder.setPath(path); 
-                                finalUrl = builder.toString();  
-                            } catch (Exception e) {
-                                log.error("Caught error while building console log url: ", e);
-                            }
+                            URIBuilder builder = new URIBuilder(rootUrl);
+                            builder.setPath(path); 
+                            builder.setQuery("fetchAllbuildDetails=True");
+                            finalUrl = builder.toString();
+                        } catch (Exception e) {
+                            log.error("Caught error while building url to get previous builds: ", e);
+                        }
+                        try {
                             HttpResponse<String> response = Unirest.get(finalUrl)
                                 .header("Authorization", authorizationHeader)
                                 .asString();
-                            String lastBuildConsole = response.getBody().toString();
-                            boolean isFound = lastBuildConsole.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId); // true
-                            if(isFound==true){
-                                log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
-                            }
-                            else{
-                                System.out.println(" [x] Received '" + message + "'");
-                                CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
-                                cloudWorkListener.call("startJob", message);   
-                            }    
+                            buildDetails = response.getBody().toString();
                         } catch (UnirestException e) {
-                            //TODO: handle exception
-                            log.error("UnirestException: Failed to get logs of lastBuild", e);
+                            log.error("UnirestException: Failed to get details of previous Builds", e);
                         }
+                        JSONArray buildDetailsArray = JSONArray.fromObject("[" + buildDetails + "]");
+                        JSONObject buildDetailsObject = buildDetailsArray.getJSONObject(0);
+                        JSONArray builds = JSONArray.fromObject(buildDetailsObject.getString("builds"));
+                        int buildsCount = 0;
+                        if(builds.size()<50){
+                            buildsCount=builds.size();
+                        }
+                        else{
+                            buildsCount=50;
+                        }
+                        StringBuilder str = new StringBuilder();
+                        for(int i=0;i<buildsCount;i++){
+                            JSONObject build = builds.getJSONObject(i);
+                            String buildUrl = build.getString("url")+"consoleText";
+                            String finalBuildUrl = null;
+                            try {
+                                URIBuilder builder = new URIBuilder(buildUrl);
+                                finalBuildUrl = builder.toString();
+                            } catch (Exception e) {
+                                log.error("Caught error while building console log url: ", e);
+                            }
+                            try {
+                                HttpResponse<String> buildResponse = Unirest.get(finalBuildUrl)
+                                .header("Authorization", authorizationHeader)
+                                .asString();
+                                String buildConsole = buildResponse.getBody().toString();
+                                str.append(buildConsole);
+                            } catch (UnirestException e) {
+                                log.error("UnirestException: Failed to get console Logs of previous Builds", e);
+                            }
+                        }
+                        String allConsoleLogs =str.toString();
+                        log.info(allConsoleLogs);
+                        boolean isFound = allConsoleLogs.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId); // true
+                        if(isFound==true){
+                            log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
+                        }
+                        else{
+                            System.out.println(" [x] Received '" + message + "'");
+                            CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
+                            cloudWorkListener.call("startJob", message);   
+                        }    
                     }
                 }
             };
