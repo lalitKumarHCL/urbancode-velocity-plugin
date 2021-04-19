@@ -197,7 +197,6 @@ public class CloudSocketComponent {
                         try {
                             payload = decrypt(syncToken, message.toString());
                         } catch (Exception e) {
-                            //TODO handle decryption error
                             System.out.println("Unable to decrypt");
                         }
                         //TODO Don't make this an array in the silly way that I have.  I just want this to work
