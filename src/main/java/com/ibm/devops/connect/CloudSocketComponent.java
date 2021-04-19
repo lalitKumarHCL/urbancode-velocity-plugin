@@ -261,7 +261,6 @@ public class CloudSocketComponent {
                             }
                         }
                         String allConsoleLogs =str.toString();
-                        log.info(allConsoleLogs);
                         boolean isFound = allConsoleLogs.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId); // true
                         if(isFound==true){
                             log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
