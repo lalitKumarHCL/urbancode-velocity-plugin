@@ -218,7 +218,7 @@ public class CloudSocketComponent {
                             builder.setQuery("fetchAllbuildDetails=True");
                             finalUrl = builder.toString();
                         } catch (Exception e) {
-                            log.error("Caught error while building url to get previous builds: ", e);
+                            log.error("Caught error while building url to get details of previous builds: ", e);
                         }
                         try {
                             HttpResponse<String> response = Unirest.get(finalUrl)
@@ -256,11 +256,11 @@ public class CloudSocketComponent {
                                 String buildConsole = buildResponse.getBody().toString();
                                 str.append(buildConsole);
                             } catch (UnirestException e) {
-                                log.error("UnirestException: Failed to get console Logs of previous Builds", e);
+                                log.error("UnirestException: Failed to get console Logs of previous builds", e);
                             }
                         }
                         String allConsoleLogs =str.toString();
-                        boolean isFound = allConsoleLogs.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId); // true
+                        boolean isFound = allConsoleLogs.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId);
                         if(isFound==true){
                             log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
                         }
