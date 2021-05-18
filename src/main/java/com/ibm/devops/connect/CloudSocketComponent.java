@@ -209,12 +209,12 @@ public class CloudSocketComponent {
                         String encodedString = getEncodedString(plainCredentials);
                         String authorizationHeader = "Basic " + encodedString;
                         String rootUrl = Jenkins.getInstance().getRootUrl();
-                        String path = "/job/"+jobName.replaceAll("/", "/job/")+"/api/json";
+                        String path = "job/"+jobName.replaceAll("/", "/job/")+"/api/json";
                         String finalUrl = null;
                         String buildDetails = null;
                         try {
                             URIBuilder builder = new URIBuilder(rootUrl);
-                            builder.setPath(path); 
+                            builder.setPath(builder.getPath()+path); 
                             builder.setQuery("fetchAllbuildDetails=True");
                             finalUrl = builder.toString();
                         } catch (Exception e) {
