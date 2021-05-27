@@ -43,14 +43,6 @@
         <f:entry title="${%User Access Key}" field="apiToken">
             <f:password />
         </f:entry>
-        <f:advanced>
-            <f:entry title="${%Rabbit MQ Port}" field="rabbitMQPort">
-                <f:textbox />
-            </f:entry>
-            <f:entry title="${%Rabbit MQ Host}" field="rabbitMQHost">
-                <f:textbox />
-            </f:entry>
-        </f:advanced>
         <f:entry title="">
             <div style="text-align: right">
             <f:validateButton
@@ -58,5 +50,40 @@
                 method="testConnection" with="syncId,syncToken,baseUrl"/>
             </div>
         </f:entry>
+        <f:advanced>
+            <f:entry title="${%Rabbit MQ Port}" field="rabbitMQPort">
+                <f:textbox />
+            </f:entry>
+            <f:entry title="${%Rabbit MQ Host}" field="rabbitMQHost">
+                <f:textbox />
+            </f:entry>
+            <f:section title="Add Another Velocity Instance">
+                <f:entry title="Integration ID" field="syncId2">
+                    <f:textbox />
+                </f:entry>
+                <f:entry title="Integration Token" field="syncToken2">
+                    <f:password />
+                </f:entry>
+                <f:entry title="Velocity Base URL" field="baseUrl2">
+                    <f:textbox />
+                </f:entry>
+                <f:entry title="${%User Access Key}" field="apiToken2">
+                    <f:password />
+                </f:entry>
+                <f:entry title="${%Rabbit MQ Port}" field="rabbitMQPort2">
+                    <f:textbox />
+                </f:entry>
+                <f:entry title="${%Rabbit MQ Host}" field="rabbitMQHost2">
+                    <f:textbox />
+                </f:entry>
+                <f:entry title="">
+                    <div style="text-align: right">
+                    <f:validateButton
+                        title="${%Test Connection}" progress="${%Testing...}"
+                        method="testConnection2" with="syncId2,syncToken2,baseUrl2"/>
+                    </div>
+                </f:entry>
+            </f:section>
+        </f:advanced>
     </f:section>
 </j:jelly>
