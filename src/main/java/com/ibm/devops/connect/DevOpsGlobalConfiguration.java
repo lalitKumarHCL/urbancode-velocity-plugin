@@ -242,7 +242,7 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
             
             boolean connected = CloudPublisher.testConnection2(syncId, syncToken, baseUrl);
             if (connected) {
-                boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
+                boolean amqpConnected = CloudSocketComponent2.isAMQPConnected();
                 String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV 2nd Instance.";
                 if(amqpConnected) {
                     rabbitMessage = "Connected to RabbitMQ successfully. Ready to run Jenkins jobs from UCV 2nd Instance.";
