@@ -123,10 +123,20 @@ public class CloudWorkListener2 {
 
         String payload = args[0].toString();
         String token = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken();
-
         try {
             payload = decrypt(token, payload);
+            log.info(payload.toString());
         } catch (Exception e) {
+            if(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()){
+                String token2 = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken2();
+                try {
+                    payload = decrypt(token2, payload);
+                    log.info(payload.toString());
+                } catch (Exception e1) {
+                    //TODO: handle exception
+                    System.out.println("Unable to decrypt using token 2");
+                }
+            }
             //TODO handle decryption error
             System.out.println("Unable to decrypt");
         }
@@ -212,6 +222,9 @@ public class CloudWorkListener2 {
                     JenkinsJobStatus erroredJobStatus = new JenkinsJobStatus(null, cloudCause, null, null, true, true);
                     JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage);
                     CloudPublisher.uploadJobStatus(statusUpdate);
+                    if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                        CloudPublisher.uploadJobStatus2(statusUpdate);
+                    }
                 }
 
             }

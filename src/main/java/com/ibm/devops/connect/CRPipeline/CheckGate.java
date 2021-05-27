@@ -31,6 +31,7 @@ import org.kohsuke.stapler.StaplerRequest;
 import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
 import com.ibm.devops.connect.Endpoints.EndpointManager;
+import com.ibm.devops.connect.Endpoints.EndpointManager2;
 
 public class CheckGate extends Builder implements SimpleBuildStep {
 
@@ -61,6 +62,10 @@ public class CheckGate extends Builder implements SimpleBuildStep {
         EndpointManager em = new EndpointManager();
         return em.getPipelinesEndpoint();
     }
+    private static String getPipelinesUrl2() {
+        EndpointManager2 em = new EndpointManager2();
+        return em.getPipelinesEndpoint();
+    }
 
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
@@ -78,6 +83,10 @@ public class CheckGate extends Builder implements SimpleBuildStep {
         String fatal = envVars.expand(this.fatal);
 
         listener.getLogger().println("Check gates on pipeline: " + CheckGate.getPipelinesUrl() + pipelineId);
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            listener.getLogger().println("Check gates on pipeline for 2nd Instance: " + CheckGate.getPipelinesUrl2() + pipelineId);
+        }
+
         listener.getLogger().println("Checking gate on stage \"" + stageName + "\" for version \"" + versionId + "\" in UrbanCode Velocity...");
         Boolean throwException = false;
         try {
@@ -115,6 +124,44 @@ public class CheckGate extends Builder implements SimpleBuildStep {
                 listener.error("\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
             }
             build.setResult(Result.FAILURE);
+        }
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            try {
+                String result = CloudPublisher.checkGate2(pipelineId, stageName, versionId);
+                JSONObject resultObj = JSONObject.fromObject(result);
+                if (resultObj.has("errors")) {
+                    throw new RuntimeException(resultObj.get("errors").toString());
+                }
+                Iterator<?> keys = resultObj.keys();
+                Boolean anyGateFailed = false;
+                while(keys.hasNext()) {
+                    String key = keys.next().toString();
+                    String value = resultObj.get(key).toString();
+                    if (value.equals("true")) {
+                        listener.getLogger().println("Gate \"" + key + "\" passed for 2nd Instance");
+                    } else if (value.equals("false")) {
+                        listener.getLogger().println("Gate \"" + key + "\" failed for 2nd Instance");
+                        anyGateFailed = true;
+                    }
+                }
+                if (anyGateFailed) {
+                    if (fatal != null && fatal.equals("true")) {
+                        throwException = true;
+                    }
+                    build.setResult(Result.FAILURE);
+                } else {
+                    listener.getLogger().println("No gate failures for 2nd Instance, gates pass.");
+                }
+            } catch (Exception ex) {
+                listener.error("Error checking gate for 2nd Instance: " + ex.getClass() + " - " + ex.getMessage());
+                listener.error("Stack trace for 2nd Instance:");
+                StackTraceElement[] elements = ex.getStackTrace();
+                for (int i = 0; i < elements.length; i++) {
+                    StackTraceElement s = elements[i];
+                    listener.error("\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
+                }
+                build.setResult(Result.FAILURE);
+            }
         }
         if (throwException) {
             throw new RuntimeException("Gate failure and fatal set to \"true\", exception thrown to stop build.");

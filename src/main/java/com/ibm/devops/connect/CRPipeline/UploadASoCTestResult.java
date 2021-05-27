@@ -215,6 +215,15 @@ public class UploadASoCTestResult extends Notifier {
                     listener.error("Error uploading ASoC data: " + ex.getClass() + " - " + ex.getMessage());
                     build.setResult(Result.FAILURE);
                 }
+                if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                    try {
+                        CloudPublisher.uploadQualityDataRaw2(payload.toString());
+                        listener.getLogger().println("Upload Complete for 2nd Instance");
+                    } catch (Exception ex) {
+                        listener.error("Error uploading ASoC data to 2nd Instance: " + ex.getClass() + " - " + ex.getMessage());
+                        build.setResult(Result.FAILURE);
+                    }
+                }
 
             } catch (NoSuchMethodException e1) {
                 listener.getLogger().println("Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");

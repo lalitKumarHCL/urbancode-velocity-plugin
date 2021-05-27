@@ -171,6 +171,9 @@ public class CloudWorkListener implements IWorkListener {
                     JenkinsJobStatus erroredJobStatus = new JenkinsJobStatus(null, cloudCause, null, null, true, true);
                     JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage);
                     CloudPublisher.uploadJobStatus(statusUpdate);
+                    if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                        CloudPublisher.uploadJobStatus2(statusUpdate);
+                    }
 
                     workStatus = WorkStatus.failed;
                 }

@@ -73,6 +73,17 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
                 build.setResult(Result.UNSTABLE);
             }
         }
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            String userAccessKey2 = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getApiToken2();
+            boolean success2 = workspace.act(new FileUploader2(this.properties, listener, buildUrl, CloudPublisher.getQualityDataUrl2(), userAccessKey2));
+            if (!success2) {
+                if (fatalFailure != null && fatalFailure.toString().equals("true")) {
+                    build.setResult(Result.FAILURE);
+                } else {
+                    build.setResult(Result.UNSTABLE);
+                }
+            }
+        }
     }
 
     @Extension
@@ -181,6 +192,93 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
                 success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey);
             } catch (Exception ex) {
                 listener.error("Error uploading quality data: " + ex.getClass() + " - " + ex.getMessage());
+            }
+            return success;
+        }
+        /**
+         * Check the role of the executing node to follow jenkins new file access rules
+         */
+        @Override
+        public void checkRoles(RoleChecker checker) throws SecurityException {
+            // no-op
+        }
+    }
+    private static final class FileUploader2 implements FileCallable<Boolean> {
+        private Map<String, String> properties;
+        private TaskListener listener;
+        private String buildUrl;
+        private String postUrl;
+        private String userAccessKey;
+
+        public FileUploader2(Map<String, String> properties, TaskListener listener, String buildUrl, String postUrl, String userAccessKey) {
+            this.properties = properties;
+            this.listener = listener;
+            this.buildUrl = buildUrl;
+            this.postUrl = postUrl;
+            this.userAccessKey = userAccessKey;
+        }
+
+        @Override public Boolean invoke(File f, VirtualChannel channel) {
+            listener.getLogger().println("Uploading JUnit File to 2nd Instance");
+
+            String filePath = properties.get("filePath");
+            String tenantId = properties.get("tenant_id");
+            String name = properties.get("name");
+            String testSetName = properties.get("testSetName");
+            String appId = properties.get("appId");
+            String appExtId = properties.get("appExtId");
+            String appName = properties.get("appName");
+            String environment = properties.get("environment");
+            Object combineTestSuites = properties.get("combineTestSuites");
+            String metricDefinitionId = properties.get("metricDefinitionId");
+            String buildId = properties.get("buildId");
+
+            JSONObject payload = new JSONObject();
+            JSONObject application = new JSONObject();
+            JSONObject record = new JSONObject();
+            JSONObject options = new JSONObject();
+
+            application.put("id", appId);
+            application.put("name", appName);
+            application.put("externalId", appExtId);
+
+            record.put("pluginType", "junitXML");
+            record.put("dataFormat", "xml");
+            record.put("recordName", name);
+            record.put("metricDefinitionId", metricDefinitionId);
+
+            if (combineTestSuites != null) {
+                options.put("combineTestSuites", combineTestSuites.toString());
+            }
+
+            payload.put("dataSet", testSetName);
+            payload.put("environment", environment);
+            payload.put("tenantId", tenantId);
+
+            payload.put("application", application);
+            payload.put("record", record);
+            payload.put("options", options);
+
+            JSONObject build = new JSONObject();
+            if (buildId != null) {
+                build.put("id", buildId);
+            }
+            build.put("url", this.buildUrl);
+            payload.put("build", build);
+
+            System.out.println("TEST payload: " + payload.toString(2));
+
+            HttpEntity entity = MultipartEntityBuilder
+                .create()
+                .addTextBody("payload", payload.toString())
+                .addBinaryBody("file", new File(f, filePath), ContentType.create("application/octet-stream"), "filename")
+                .build();
+
+            boolean success = false;
+            try {
+                success = CloudPublisher.uploadQualityData2(entity, postUrl, userAccessKey);
+            } catch (Exception ex) {
+                listener.error("Error uploading quality data to 2nd Instance: " + ex.getClass() + " - " + ex.getMessage());
             }
             return success;
         }

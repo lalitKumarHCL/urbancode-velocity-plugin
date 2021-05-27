@@ -232,6 +232,33 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
                 build.setResult(Result.UNSTABLE);
             }
         }
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            try {
+                String response = CloudPublisher.uploadBuild2(payload.toString());
+                JSONObject json = JSONObject.fromObject(response);
+                if (json.isEmpty() || !json.has("_id") || json.get("_id").equals("")) {
+                    throw new RuntimeException("Did not receive successful response for 2nd Instance: " + response);
+                }
+                listener.getLogger().println("Successfully uploaded build to UrbanCode Velocity 2nd Instance.");
+            } catch (Exception ex) {
+                listener.error("Error uploading build data to 2nd Instance: " + ex.getClass() + " - " + ex.getMessage());
+                if (fatal.equals("true")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Failing build due to fatal=true for 2nd Instance");
+                    }
+                    build.setResult(Result.FAILURE);
+                } else if (fatal.equals("false")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Not changing build result due to fatal=false for 2nd Instance");
+                    }
+                } else {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Marking build as unstable due to fatal flag not set for 2nd Instance");
+                    }
+                    build.setResult(Result.UNSTABLE);
+                }
+            }
+        }   
     }
 
     @Extension

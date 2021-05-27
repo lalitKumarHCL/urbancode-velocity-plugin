@@ -59,6 +59,10 @@ public class CloudRunListener extends RunListener<Run> {
             status.setRunStatus(true);
             JSONObject statusUpdate = status.generate(false);
             CloudPublisher.uploadJobStatus(statusUpdate);
+            if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                CloudPublisher.uploadJobStatus2(statusUpdate);
+            }
+
         }
     }
 
@@ -79,6 +83,9 @@ public class CloudRunListener extends RunListener<Run> {
             status.setRunStatus(true);
             JSONObject statusUpdate = status.generate(true);
             CloudPublisher.uploadJobStatus(statusUpdate);
+            if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                CloudPublisher.uploadJobStatus2(statusUpdate);
+            }
         }
     }
 

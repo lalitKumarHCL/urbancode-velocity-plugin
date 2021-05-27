@@ -70,6 +70,9 @@ public class CloudGraphListener implements GraphListener {
             JenkinsPipelineStatus status = new JenkinsPipelineStatus(workflowRun, cloudCause, node, listener, isStartNode, isPauseNode);
             JSONObject statusUpdate = status.generate(false);
             CloudPublisher.uploadJobStatus(statusUpdate);
+            if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                CloudPublisher.uploadJobStatus2(statusUpdate);
+            }
         }
     }
 

@@ -44,6 +44,9 @@ public class CloudBuildStepListener extends BuildStepListener {
             JenkinsJobStatus status = new JenkinsJobStatus(build, cloudCause, bs, listener, false, !canContinue);
             JSONObject statusUpdate = status.generate(false);
             CloudPublisher.uploadJobStatus(statusUpdate);
+            if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                CloudPublisher.uploadJobStatus2(statusUpdate);
+            }
         }
     }
 
@@ -53,6 +56,9 @@ public class CloudBuildStepListener extends BuildStepListener {
             JenkinsJobStatus status = new JenkinsJobStatus(build, getCloudCause(build), bs, listener, true, false);
             JSONObject statusUpdate = status.generate(false);
             CloudPublisher.uploadJobStatus(statusUpdate);
+            if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                CloudPublisher.uploadJobStatus2(statusUpdate);
+            }
         }
     }
 

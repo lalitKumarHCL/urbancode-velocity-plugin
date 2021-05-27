@@ -64,6 +64,9 @@ public class CloudItemListener extends ItemListener {
                 JenkinsJob jenkinsJob= new JenkinsJob(item);
                 log.info(ToStringBuilder.reflectionToString(jenkinsJob.toJson()) + " was " + phase);
                 CloudPublisher.uploadJobInfo(jenkinsJob.toJson());
+                if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                    CloudPublisher.uploadJobInfo2(jenkinsJob.toJson());
+                }
             }
         }
     }
@@ -80,6 +83,9 @@ public class CloudItemListener extends ItemListener {
                     allJobs.add(jenkinsJob.toJson());
 
                     CloudPublisher.uploadJobInfo(jenkinsJob.toJson());
+                    if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+                        CloudPublisher.uploadJobInfo2(jenkinsJob.toJson());
+                    }
                 }
             }
         }

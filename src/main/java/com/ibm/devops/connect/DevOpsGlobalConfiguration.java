@@ -45,10 +45,16 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
     private volatile String syncId;
     private volatile String syncToken;
     private volatile String baseUrl;
+    private volatile String syncId2;
+    private volatile String syncToken2;
+    private volatile String baseUrl2;
     private String credentialsId;
     private String rabbitMQPort;
     private String rabbitMQHost;
     private String apiToken;
+    private String rabbitMQPort2;
+    private String rabbitMQHost2;
+    private String apiToken2;
 
     public DevOpsGlobalConfiguration() {
         load();
@@ -90,6 +96,42 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         save();
     }
 
+    public String getSyncId2() {
+    	return syncId2;
+    }
+
+    public void setSyncId2(String syncId2) {
+        this.syncId2 = syncId2;
+        save();
+    }
+
+    public String getSyncToken2() {
+    	return syncToken2;
+    }
+
+    public void setSyncToken2(String syncToken2) {
+        this.syncToken2 = syncToken2;
+        save();
+    }
+
+    public String getApiToken2() {
+        return apiToken2;
+    }
+
+    public void setApiToken2(String apiToken2) {
+        this.apiToken2 = apiToken2;
+        save();
+    }
+
+    public String getBaseUrl2() {
+    	return baseUrl2;
+    }
+
+    public void setBaseUrl2(String baseUrl2) {
+        this.baseUrl2 = baseUrl2;
+        save();
+    }
+
     public String getCredentialsId() {
         return credentialsId;
     }
@@ -117,6 +159,24 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         save();
     }
 
+    public String getRabbitMQPort2() {
+        return rabbitMQPort2;
+    }
+
+    public String getRabbitMQHost2() {
+        return rabbitMQHost2;
+    }
+
+    public void setRabbitMQPort2(String rabbitMQPort2) {
+        this.rabbitMQPort2 = rabbitMQPort2;
+        save();
+    }
+
+    public void setRabbitMQHost2(String rabbitMQHost2) {
+        this.rabbitMQHost2 = rabbitMQHost2;
+        save();
+    }
+
     @Override
     public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
         // To persist global configuration information,
@@ -128,10 +188,20 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         rabbitMQPort = formData.getString("rabbitMQPort");
         rabbitMQHost = formData.getString("rabbitMQHost");
         apiToken = formData.getString("apiToken");
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            syncId2 = formData.getString("syncId2");
+            syncToken2 = formData.getString("syncToken2");
+            baseUrl2 = formData.getString("baseUrl2");
+            rabbitMQPort2 = formData.getString("rabbitMQPort2");
+            rabbitMQHost2 = formData.getString("rabbitMQHost2");
+            apiToken2 = formData.getString("apiToken2");
+        }
         save();
 
         reconnectCloudSocket();
-
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            reconnectCloudSocket2();
+        }
         return super.configure(req,formData);
     }
 
@@ -161,6 +231,29 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
             }
         } catch (Exception e) {
             return FormValidation.error("Could not connect to Velocity : " + e.getMessage());
+        }
+    }
+
+    public FormValidation doTestConnection2(@QueryParameter("syncId2") final String syncId,
+        @QueryParameter("syncToken2") final String syncToken,
+        @QueryParameter("baseUrl2") final String baseUrl)
+    throws FormException {
+        try {
+            
+            boolean connected = CloudPublisher.testConnection2(syncId, syncToken, baseUrl);
+            if (connected) {
+                boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
+                String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV 2nd Instance.";
+                if(amqpConnected) {
+                    rabbitMessage = "Connected to RabbitMQ successfully. Ready to run Jenkins jobs from UCV 2nd Instance.";
+                }
+
+                return FormValidation.ok("Successful connection to Velocity 2nd Instance Services.\n" + rabbitMessage);
+            } else {
+                return FormValidation.error("Could not connect to Velocity 2nd Instance.  Please check your URL and credentials provided.");
+            }
+        } catch (Exception e) {
+            return FormValidation.error("Could not connect to Velocity 2nd Instance : " + e.getMessage());
         }
     }
 
@@ -198,6 +291,11 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
 
         connectComputerListener.onOnline(Jenkins.getInstance().toComputer());
     }
+    private void reconnectCloudSocket2() {
+        ConnectComputerListener2 connectComputerListener2 = new ConnectComputerListener2();
+
+        connectComputerListener2.onOnline(Jenkins.getInstance().toComputer());
+    }
 
     public boolean isConfigured() {
         return StringUtils.isNotEmpty(this.syncId) &&
@@ -205,5 +303,12 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
                StringUtils.isNotEmpty(this.baseUrl) &&
                StringUtils.isNotEmpty(this.credentialsId) &&
                StringUtils.isNotEmpty(this.apiToken);
+    }
+    public boolean isConfigured2() {
+        return StringUtils.isNotEmpty(this.syncId2) &&
+               StringUtils.isNotEmpty(this.syncToken2) &&
+               StringUtils.isNotEmpty(this.baseUrl2) &&
+               StringUtils.isNotEmpty(this.credentialsId) &&
+               StringUtils.isNotEmpty(this.apiToken2);
     }
 }

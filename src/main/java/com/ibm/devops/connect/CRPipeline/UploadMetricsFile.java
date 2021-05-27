@@ -238,6 +238,31 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         } else {
             listener.getLogger().println("Successfully uploaded metric file to UrbanCode Velocity.");
         }
+
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured2()) {
+            String userAccessKey2 = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getApiToken2();
+            boolean success2 = workspace.act(new FileUploader2(filePath, payload.toString(), listener, CloudPublisher.getQualityDataUrl2(), userAccessKey2));
+            if (!success2) {
+                listener.getLogger().println("Problem uploading metrics file to UrbanCode Velocity 2nd Instance.");
+                if (fatal.equals("true")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Failing build due to fatal=true for 2nd Instance.");
+                    }
+                    build.setResult(Result.FAILURE);
+                } else if (fatal.equals("false")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Not changing build result due to fatal=false for 2nd Instance.");
+                    }
+                } else {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Marking build as unstable due to fatal flag not set for 2nd Instance.");
+                    }
+                    build.setResult(Result.UNSTABLE);
+                }
+            } else {
+                listener.getLogger().println("Successfully uploaded metric file to UrbanCode Velocity for 2nd Instance.");
+            }
+        }
     }
 
     @Extension
@@ -308,6 +333,60 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
             } catch (Exception ex) {
                 listener.error("Error uploading metric file: " + ex.getClass() + " - " + ex.getMessage());
                 listener.error("Stack trace:");
+                StackTraceElement[] elements = ex.getStackTrace();
+                for (int i = 0; i < elements.length; i++) {
+                    StackTraceElement s = elements[i];
+                    listener.error("\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
+                }
+            }
+            return success;
+        }
+        /**
+         * Check the role of the executing node to follow jenkins new file access rules
+         */
+        @Override
+        public void checkRoles(RoleChecker checker) throws SecurityException {
+            // no-op
+        }
+    }
+    private static final class FileUploader2 implements FileCallable<Boolean> {
+        private static final long serialVersionUID = 1L;
+        private String filePath;
+        private String payload;
+        private String postUrl;
+        private String userAccessKey;
+        private TaskListener listener;
+
+        public FileUploader2(String filePath, String payload, TaskListener listener, String postUrl, String userAccessKey) {
+            this.filePath = filePath;
+            this.payload = payload;
+            this.listener = listener;
+            this.postUrl = postUrl;
+            this.userAccessKey = userAccessKey;
+        }
+
+        @Override public Boolean invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+
+            File file = new File(this.filePath);
+            if (!file.isAbsolute()) {
+                file = new File(f, this.filePath);
+            }
+            if (!file.exists()) {
+                throw new RuntimeException("File " + file.getAbsolutePath() + " does not exist");
+            }
+
+            HttpEntity entity = MultipartEntityBuilder
+                .create()
+                .addTextBody("payload", this.payload)
+                .addBinaryBody("file", file, ContentType.create("application/octet-stream"), "filename")
+                .build();
+
+            boolean success = false;
+            try {
+                success = CloudPublisher.uploadQualityData2(entity, postUrl, userAccessKey);
+            } catch (Exception ex) {
+                listener.error("Error uploading metric file to 2nd Instance: " + ex.getClass() + " - " + ex.getMessage());
+                listener.error("Stack trace for 2nd Instance:");
                 StackTraceElement[] elements = ex.getStackTrace();
                 for (int i = 0; i < elements.length; i++) {
                     StackTraceElement s = elements[i];
