@@ -7,6 +7,8 @@ import java.net.URL;
 import java.net.MalformedURLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.ibm.devops.connect.Entry;
+import java.util.List;
 
 public class EndpointsVelocity implements IEndpoints {
     private String logPrefix = "[EndpointsVelocity] EndpointsVelocity#";
@@ -21,16 +23,16 @@ public class EndpointsVelocity implements IEndpoints {
     private static final String DOTS_PATH = "/api/v1/dots";
     private static final String PIPELINES_PATH = "/pipelines/";
 
-    public String getReleaseEvensApiEndpoint() {
-        return getBaseUrl() + RELEASE_EVENTS_API_PATH;
+    public String getReleaseEvensApiEndpoint(int i) {
+        return getBaseUrl(i) + RELEASE_EVENTS_API_PATH;
     }
 
-    public String getSyncApiEndpoint() {
-        return getBaseUrl() + REPORTING_SYNC_PATH;
+    public String getSyncApiEndpoint(int i) {
+        return getBaseUrl(i) + REPORTING_SYNC_PATH;
     }
 
-    public String getDotsEndpoint() {
-        return getBaseUrl() + DOTS_PATH;
+    public String getDotsEndpoint(int i) {
+        return getBaseUrl(i) + DOTS_PATH;
     }
 
     public String getSyncApiEndpoint(String baseUrl) {
@@ -38,29 +40,29 @@ public class EndpointsVelocity implements IEndpoints {
         return baseUrl + REPORTING_SYNC_PATH;
     }
 
-    public String getPipelinesEndpoint() {
-        return getBaseUrl() + PIPELINES_PATH;
+    public String getPipelinesEndpoint(int i) {
+        return getBaseUrl(i) + PIPELINES_PATH;
     }
 
-    public String getQualityDataEndpoint() {
-        return getBaseUrl() + QUALITY_DATA_PATH;
+    public String getQualityDataEndpoint(int i) {
+        return getBaseUrl(i) + QUALITY_DATA_PATH;
     }
 
-    public String getQualityDataRawEndpoint() {
-        return getBaseUrl() + QUALITY_DATA_RAW_PATH;
+    public String getQualityDataRawEndpoint(int i) {
+        return getBaseUrl(i) + QUALITY_DATA_RAW_PATH;
     }
 
-    public String getSyncStoreEndpoint() {
+    public String getSyncStoreEndpoint(int i) {
         return SYNC_STORE_ENPOINT;
     }
 
-    public String getConnectEndpoint() {
+    public String getConnectEndpoint(int i) {
         return CONNECT_ENPOINT;
     }
 
-    public String getVelocityHostname() {
+    public String getVelocityHostname(int i) {
         try {
-            String url = getBaseUrl();
+            String url = getBaseUrl(i);
             URL urlObj = new URL(url);
             return urlObj.getHost();
         } catch (MalformedURLException e) {
@@ -69,8 +71,9 @@ public class EndpointsVelocity implements IEndpoints {
         return "";
     }
 
-    private String getBaseUrl() {
-        return removeTrailingSlash(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getBaseUrl());
+    private String getBaseUrl(int i) {
+        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        return removeTrailingSlash(entries.get(i).getBaseUrl());
     }
 
     private String removeTrailingSlash(String url) {

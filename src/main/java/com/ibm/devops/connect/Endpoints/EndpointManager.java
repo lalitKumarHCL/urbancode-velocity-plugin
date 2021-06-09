@@ -12,43 +12,43 @@ public class EndpointManager {
         endpointProvider = new EndpointsVelocity();
     }
 
-    public String getSyncApiEndpoint() {
-        return endpointProvider.getSyncApiEndpoint();
+    public String getSyncApiEndpoint(int i) {
+        return endpointProvider.getSyncApiEndpoint(i);
     }
 
-    public String getPipelinesEndpoint() {
-        return endpointProvider.getPipelinesEndpoint();
+    public String getPipelinesEndpoint(int i) {
+        return endpointProvider.getPipelinesEndpoint(i);
     }
 
-    public String getQualityDataEndpoint() {
-        return endpointProvider.getQualityDataEndpoint();
+    public String getQualityDataEndpoint(int i) {
+        return endpointProvider.getQualityDataEndpoint(i);
     }
 
-    public String getQualityDataRawEndpoint() {
-        return endpointProvider.getQualityDataRawEndpoint();
+    public String getQualityDataRawEndpoint(int i) {
+        return endpointProvider.getQualityDataRawEndpoint(i);
     }
 
     public String getSyncApiEndpoint(String baseUrl) {
         return endpointProvider.getSyncApiEndpoint(baseUrl);
     }
 
-    public String getReleaseEvensApiEndpoint() {
-        return endpointProvider.getReleaseEvensApiEndpoint();
+    public String getReleaseEvensApiEndpoint(int i) {
+        return endpointProvider.getReleaseEvensApiEndpoint(i);
     }
 
-    public String getDotsEndpoint() {
-        return endpointProvider.getDotsEndpoint();
+    public String getDotsEndpoint(int i) {
+        return endpointProvider.getDotsEndpoint(i);
     }
 
-    public String getSyncStoreEndpoint() {
-        return endpointProvider.getSyncStoreEndpoint();
+    public String getSyncStoreEndpoint(int i) {
+        return endpointProvider.getSyncStoreEndpoint(i);
     }
 
-    public String getConnectEndpoint() {
-        return endpointProvider.getConnectEndpoint();
+    public String getConnectEndpoint(int i) {
+        return endpointProvider.getConnectEndpoint(i);
     }
 
-    public String getVelocityHostname() {
-        return endpointProvider.getVelocityHostname();
+    public String getVelocityHostname(int i) {
+        return endpointProvider.getVelocityHostname(i);
     }
 }
