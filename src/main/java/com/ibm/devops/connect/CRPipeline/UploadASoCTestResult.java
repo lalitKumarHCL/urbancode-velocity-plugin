@@ -37,6 +37,9 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
+import com.ibm.devops.connect.Entry;
+import java.util.List;
+
 
 public class UploadASoCTestResult extends Notifier {
 
@@ -93,12 +96,6 @@ public class UploadASoCTestResult extends Notifier {
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
     throws AbortException, InterruptedException, IOException {
-
-        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
-            listener.getLogger().println("Could not upload ASoC results to Velocity as there is no configuration specified.");
-            return false;
-        }
-
         EnvVars envVars = build.getEnvironment(listener);
         // Resolving all passed ${VARIABLES}
         String tenantIdValue = envVars.expand(this.tenantId);
@@ -208,13 +205,21 @@ public class UploadASoCTestResult extends Notifier {
 
                 listener.getLogger().println("Payload Doc To Upload: " + payload.toString());
                 listener.getLogger().println("Uploading Payload Doc");
-                try {
-                    CloudPublisher.uploadQualityDataRaw(payload.toString());
-                    listener.getLogger().println("Upload Complete");
-                } catch (Exception ex) {
-                    listener.error("Error uploading ASoC data: " + ex.getClass() + " - " + ex.getMessage());
-                    build.setResult(Result.FAILURE);
+                List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+                for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
+                    if (!entries.get(instanceNum).isConfigured()) {
+                        listener.getLogger().println("Could not upload ASoC results to Velocity as there is no configuration specified.");
+                        return false;
+                    }
+                    try {
+                        CloudPublisher.uploadQualityDataRaw(instanceNum,payload.toString());
+                        listener.getLogger().println("Upload Complete");
+                    } catch (Exception ex) {
+                        listener.error("Error uploading ASoC data: " + ex.getClass() + " - " + ex.getMessage());
+                        build.setResult(Result.FAILURE);
+                    }
                 }
+                
 
             } catch (NoSuchMethodException e1) {
                 listener.getLogger().println("Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");

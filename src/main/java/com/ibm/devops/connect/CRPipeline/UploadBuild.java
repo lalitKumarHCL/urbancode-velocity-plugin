@@ -33,6 +33,8 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
+import com.ibm.devops.connect.Entry;
+import java.util.List;
 
 public class UploadBuild extends Builder implements SimpleBuildStep {
 
@@ -102,11 +104,6 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
     throws AbortException, InterruptedException, IOException {
-        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
-            listener.getLogger().println("Could not upload builds to Velocity as there is no configuration specified.");
-            return;
-        }
-
         EnvVars envVars = build.getEnvironment(listener);
 
         String id = envVars.expand(this.id);
@@ -207,29 +204,36 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         }
 
         listener.getLogger().println("Uploading build \"" + payload.get("id") + "\" to UrbanCode Velocity...");
-        try {
-            String response = CloudPublisher.uploadBuild(payload.toString());
-            JSONObject json = JSONObject.fromObject(response);
-            if (json.isEmpty() || !json.has("_id") || json.get("_id").equals("")) {
-                throw new RuntimeException("Did not receive successful response: " + response);
+        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
+            if (!entries.get(instanceNum).isConfigured()) {
+                listener.getLogger().println("Could not upload builds to Velocity as there is no configuration specified.");
+                return;
             }
-            listener.getLogger().println("Successfully uploaded build to UrbanCode Velocity.");
-        } catch (Exception ex) {
-            listener.error("Error uploading build data: " + ex.getClass() + " - " + ex.getMessage());
-            if (fatal.equals("true")) {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Failing build due to fatal=true.");
+            try {
+                String response = CloudPublisher.uploadBuild(payload.toString(),instanceNum);
+                JSONObject json = JSONObject.fromObject(response);
+                if (json.isEmpty() || !json.has("_id") || json.get("_id").equals("")) {
+                    throw new RuntimeException("Did not receive successful response: " + response);
                 }
-                build.setResult(Result.FAILURE);
-            } else if (fatal.equals("false")) {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Not changing build result due to fatal=false.");
+                listener.getLogger().println("Successfully uploaded build to UrbanCode Velocity.");
+            } catch (Exception ex) {
+                listener.error("Error uploading build data: " + ex.getClass() + " - " + ex.getMessage());
+                if (fatal.equals("true")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Failing build due to fatal=true.");
+                    }
+                    build.setResult(Result.FAILURE);
+                } else if (fatal.equals("false")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Not changing build result due to fatal=false.");
+                    }
+                } else {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Marking build as unstable due to fatal flag not set.");
+                    }
+                    build.setResult(Result.UNSTABLE);
                 }
-            } else {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Marking build as unstable due to fatal flag not set.");
-                }
-                build.setResult(Result.UNSTABLE);
             }
         }
     }
