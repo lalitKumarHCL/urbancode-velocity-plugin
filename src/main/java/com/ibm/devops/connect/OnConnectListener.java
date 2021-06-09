@@ -7,7 +7,7 @@ import com.ibm.devops.connect.SecuredActions.BuildJobsList.BuildJobListParamObj;
 
 public class OnConnectListener {
     static final public Listener BUILD_JOBS_LIST = new Listener() {
-        @Override
+        
         public void call(ConnectSocket socket, String event, Object... args) {
             BuildJobsList buildJobList = new BuildJobsList();
             BuildJobListParamObj paramObj = buildJobList.new BuildJobListParamObj();
