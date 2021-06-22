@@ -37,7 +37,7 @@ public class CloudSocketComponent {
     final private IWorkListener workListener;
     final private String cloudUrl;
 
-    private static Connection conn;
+    private static Connection conn[] = new Connection[Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries().size()];
 
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
@@ -63,11 +63,11 @@ public class CloudSocketComponent {
         }
     }
 
-    public static boolean isAMQPConnected() {
-        if (conn == null || queueIsAvailable == false) {
+    public static boolean isAMQPConnected(int instanceNum) {
+        if (conn[instanceNum] == null || queueIsAvailable == false) {
             return false;
         }
-        return conn.isOpen();
+        return conn[instanceNum].isOpen();
     }
 
     public void connectToAMQP(int instanceNum) throws Exception {
@@ -115,15 +115,15 @@ public class CloudSocketComponent {
         // Synchronized to protect manipulation of static variable
         synchronized (this) {
 
-            if(this.conn != null && this.conn.isOpen()) {
-                this.conn.abort();
+            if(this.conn[instanceNum] != null && this.conn[instanceNum].isOpen()) {
+                this.conn[instanceNum].abort();
             }
             
-            conn = factory.newConnection();
+            conn[instanceNum] = factory.newConnection();
 
-            Channel channel = conn.createChannel();
+            Channel channel = conn[instanceNum].createChannel();
 
-            //log.info("[UrbanCode Velocity "+(instanceNum+1)+ "] Connecting to RabbitMQ");
+            log.info("[UrbanCode Velocity "+(instanceNum+1)+ "] Connecting to RabbitMQ");
 
             String EXCHANGE_NAME = "jenkins";
             String queueName = "jenkins.client." + syncId;

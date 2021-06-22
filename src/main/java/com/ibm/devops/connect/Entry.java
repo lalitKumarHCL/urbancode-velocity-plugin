@@ -86,9 +86,16 @@ public final class Entry implements Describable<Entry> {
         @QueryParameter("baseUrl") String baseUrl){
         //Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
             try {
+                int instanceNum = 0;
                 boolean connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl);
+                List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+                for (int i = 0; i < entries.size(); i++) {
+                    if(baseUrl.equals(entries.get(i).getBaseUrl()) && syncId.equals(entries.get(i).getSyncId())){
+                        instanceNum = i;
+                    }
+                }
                 if (connected) {
-                    boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
+                    boolean amqpConnected = ConnectComputerListener.isRabbitConnected(instanceNum);
 
                     String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV.";
                     if(amqpConnected) {

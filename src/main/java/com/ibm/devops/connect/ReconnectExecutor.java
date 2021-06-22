@@ -42,7 +42,7 @@ public class ReconnectExecutor {
         {
             List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
             for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
-            if (entries.get(instanceNum).isConfigured()) {
+            if (!cloudSocketInstance.isAMQPConnected(instanceNum) && entries.get(instanceNum).isConfigured()) {
                     try {
                         cloudSocketInstance.connectToAMQP(instanceNum);
                     } catch (Exception e) {
@@ -52,4 +52,5 @@ public class ReconnectExecutor {
             }
         }
     }
+
 }

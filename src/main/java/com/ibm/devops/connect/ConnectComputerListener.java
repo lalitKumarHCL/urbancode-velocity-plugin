@@ -28,6 +28,10 @@ public class ConnectComputerListener extends ComputerListener {
     private static CloudSocketComponent cloudSocketInstance;
     private static ReconnectExecutor reconnectExecutor;
 
+    public static boolean isRabbitConnected(int instanceNum){
+        return cloudSocketInstance.isAMQPConnected(instanceNum);
+    }
+
     private static void setCloudSocketComponent( CloudSocketComponent comp ) {
         cloudSocketInstance = comp;
     }
