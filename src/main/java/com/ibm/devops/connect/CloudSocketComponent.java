@@ -49,7 +49,7 @@ public class CloudSocketComponent {
     final private IWorkListener workListener;
     final private String cloudUrl;
 
-    private static Connection conn[] = new Connection[Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries().size()];
+    private static Connection conn[] = new Connection[5];
 
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
