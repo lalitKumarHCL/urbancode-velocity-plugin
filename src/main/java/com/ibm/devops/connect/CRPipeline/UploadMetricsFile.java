@@ -391,12 +391,11 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
                 .build();
 
             boolean success = false;
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
             try {
                 success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey, instanceNum);
             } catch (Exception ex) {
-                listener.error("Error uploading metric file (" + entries.get(instanceNum).getBaseUrl() + "): " + ex.getClass() + " - " + ex.getMessage());
-                listener.error("Stack trace (" + entries.get(instanceNum).getBaseUrl() + "):");
+                listener.error("Error uploading metric file: " + ex.getClass() + " - " + ex.getMessage());
+                listener.error("Stack trace: ");
                 StackTraceElement[] elements = ex.getStackTrace();
                 for (int i = 0; i < elements.length; i++) {
                     StackTraceElement s = elements[i];
