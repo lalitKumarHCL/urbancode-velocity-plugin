@@ -329,7 +329,6 @@ public class CloudPublisher  {
     }
 
     public static boolean uploadQualityData(HttpEntity entity, String url, String userAccessKey, int instanceNum) throws Exception {
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
         CloseableHttpResponse response = null;
@@ -343,7 +342,7 @@ public class CloudPublisher  {
             response = httpClient.execute(postMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadQualityData Upload Quality Data successfully");
+                log.info("[UrbanCode Velocity] CloudPublisher#uploadQualityData Upload Quality Data successfully");
                 success = true;
             }
             return success;
@@ -354,11 +353,11 @@ public class CloudPublisher  {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadQualityData Could not close uploadQualityData response");
+                    log.error("[UrbanCode Velocity] CloudPublisher#uploadQualityData Could not close uploadQualityData response");
                 }
             }
             if (!success) {
-                throw new Exception("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadQualityData Bad response code when uploading Quality Data: " + status + " - " + resStr);
+                throw new Exception("[UrbanCode Velocity] CloudPublisher#uploadQualityData Bad response code when uploading Quality Data: " + status + " - " + resStr);
             }
         }
     }
