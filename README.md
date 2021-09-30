@@ -53,7 +53,7 @@ Navigate to the Jenkins configuration page `Manage Jenkins > Configure System > 
 
 ### Note
 
-Jenkins integrations on Kube/Openshift instances: When a user configures a the UrabanCode Velocity plugin within Jenkins, they need to manually specify the "Rabbit MQ Port" in Jenkins  (typically 31672) since the default value (5672) will not work.
+Jenkins integrations on Kubernetes/Openshift instances: When a user configures a the UrabanCode Velocity plugin within Jenkins, they need to manually specify the "Rabbit MQ Port" in Jenkins  (typically 31672) since the default value (5672) will not work.
 
 ![Jenkins Global Config UCV Advance Options](screenshots/jenkins-config-port.PNG)
 
