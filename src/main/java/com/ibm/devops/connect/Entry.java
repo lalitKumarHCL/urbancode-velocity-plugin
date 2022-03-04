@@ -13,7 +13,6 @@ import java.util.List;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 
-
 public final class Entry implements Describable<Entry> {
 
     /**
@@ -25,10 +24,10 @@ public final class Entry implements Describable<Entry> {
     private String rabbitMQPort;
     private String rabbitMQHost;
     private String apiToken;
-    
 
     @DataBoundConstructor
-    public Entry(String syncId, String syncToken, String baseUrl, String rabbitMQPort, String rabbitMQHost, String apiToken) {
+    public Entry(String syncId, String syncToken, String baseUrl, String rabbitMQPort, String rabbitMQHost,
+            String apiToken) {
         this.syncId = syncId;
         this.syncToken = syncToken;
         this.baseUrl = baseUrl;
@@ -37,32 +36,39 @@ public final class Entry implements Describable<Entry> {
         this.apiToken = apiToken;
     }
 
+    public Entry(Object object) {
+    }
+
     public String getSyncId() {
         return syncId;
     }
+
     public String getSyncToken() {
         return syncToken;
     }
+
     public String getBaseUrl() {
         return baseUrl;
     }
+
     public String getRabbitMQPort() {
         return rabbitMQPort;
     }
+
     public String getRabbitMQHost() {
         return rabbitMQHost;
     }
+
     public String getApiToken() {
         return apiToken;
     }
 
     public boolean isConfigured() {
         return StringUtils.isNotEmpty(this.syncId) &&
-               StringUtils.isNotEmpty(this.syncToken) &&
-               StringUtils.isNotEmpty(this.baseUrl) &&
-               StringUtils.isNotEmpty(this.apiToken);
+                StringUtils.isNotEmpty(this.syncToken) &&
+                StringUtils.isNotEmpty(this.baseUrl) &&
+                StringUtils.isNotEmpty(this.apiToken);
     }
-
 
     @Override
     public Descriptor<Entry> getDescriptor() {
@@ -72,117 +78,127 @@ public final class Entry implements Describable<Entry> {
     @Extension
     public static final DescriptorImpl DESCRIPOR = new DescriptorImpl();
 
-    public static class DescriptorImpl extends  Descriptor<Entry> {
+    public static class DescriptorImpl extends Descriptor<Entry> {
         @Override
         public String getDisplayName() {
             return "Connect to UrbanCode Velocity Instance";
         }
 
-
         @SuppressWarnings("unused")
         @RequirePOST
         public FormValidation doTestConnections(@QueryParameter("syncId") String syncId,
-        @QueryParameter("syncToken") String syncToken,
-        @QueryParameter("baseUrl") String baseUrl){
+                @QueryParameter("syncToken") String syncToken,
+                @QueryParameter("baseUrl") String baseUrl) {
             try {
-                int instanceNum = 0;
                 boolean connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl);
-                List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-                for (int i = 0; i < entries.size(); i++) {
-                    if(baseUrl.equals(entries.get(i).getBaseUrl()) && syncId.equals(entries.get(i).getSyncId())){
-                        instanceNum = i;
+                List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                        .getEntries();
+                Entry finalEntry = null;
+                for (Entry entry : entries) {
+                    if (baseUrl.equals(entry.getBaseUrl()) && syncId.equals(entry.getSyncId())) {
+                        finalEntry = entry;
                     }
                 }
                 if (connected) {
-                    boolean amqpConnected = ConnectComputerListener.isRabbitConnected(instanceNum);
+                    boolean amqpConnected = ConnectComputerListener.isRabbitConnected(finalEntry);
 
-                    String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from " + entries.get(instanceNum).getBaseUrl();
-                    if(amqpConnected) {
-                        if(StringUtils.isNotEmpty(entries.get(instanceNum).getRabbitMQHost())){
-                            rabbitMessage = "Connected to RabbitMQ ( " + entries.get(instanceNum).getRabbitMQHost() + " ) successfully. Ready to run Jenkins jobs from " + entries.get(instanceNum).getBaseUrl();
-                        }else{
-                            rabbitMessage = "Connected to RabbitMQ successfully. Using default 'localhost' for RabbitMQ host. Ready to run Jenkins jobs from " + entries.get(instanceNum).getBaseUrl();
+                    String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from "
+                            + finalEntry.getBaseUrl();
+                    if (amqpConnected) {
+                        if (StringUtils.isNotEmpty(finalEntry.getRabbitMQHost())) {
+                            rabbitMessage = "Connected to RabbitMQ ( " + finalEntry.getRabbitMQHost()
+                                    + " ) successfully. Ready to run Jenkins jobs from " + finalEntry.getBaseUrl();
+                        } else {
+                            rabbitMessage = "Connected to RabbitMQ successfully. Using default 'localhost' for RabbitMQ host. Ready to run Jenkins jobs from "
+                                    + finalEntry.getBaseUrl();
                         }
                     }
 
                     return FormValidation.ok("Successful connection to Velocity Services.\n" + rabbitMessage);
                 } else {
-                    return FormValidation.error("Could not connect to " + entries.get(instanceNum).getBaseUrl() + ".  Please check your URL and credentials provided.");
+                    return FormValidation.error("Could not connect to " + finalEntry.getBaseUrl()
+                            + ".  Please check your URL and credentials provided.");
                 }
             } catch (Exception e) {
-                if(e.getMessage().contains("Index") && e.getMessage().contains("out of bounds for length")){
-                    return FormValidation.error("Could not connect to Velocity : " + e.getMessage() + "\nPlease try to Apply/Save Configration and Restart Jenkins");
-                }else{
+                if (e.getMessage().contains("Index") && e.getMessage().contains("out of bounds for length")) {
+                    return FormValidation.error("Could not connect to Velocity : " + e.getMessage()
+                            + "\nPlease try to Apply/Save Configration and Restart Jenkins");
+                } else {
                     return FormValidation.error("Could not connect to Velocity : " + e.getMessage());
                 }
             }
         }
 
-        public FormValidation doCheckSyncId(@QueryParameter("syncId") String syncId){
+        public FormValidation doCheckSyncId(@QueryParameter("syncId") String syncId) {
             int count = 0;
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             for (Entry entry : entries) {
-                if(entry.getSyncId().equals(syncId)){
+                if (entry.getSyncId().equals(syncId)) {
                     count = count + 1;
                 }
             }
-            if(count>1){
+            if (count > 1) {
                 return FormValidation.error("Duplicates not Allowed.");
             }
             return FormValidation.validateRequired(syncId);
         }
 
-        public FormValidation doCheckSyncToken(@QueryParameter("syncToken") String syncToken){
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        public FormValidation doCheckSyncToken(@QueryParameter("syncToken") String syncToken) {
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             int count = 0;
             for (Entry entry : entries) {
-                if(entry.getSyncToken().equals(syncToken)){
+                if (entry.getSyncToken().equals(syncToken)) {
                     count = count + 1;
                 }
             }
-            if(count>1){
+            if (count > 1) {
                 return FormValidation.error("Duplicates not Allowed.");
             }
             return FormValidation.validateRequired(syncToken);
         }
 
-        public FormValidation doCheckBaseUrl(@QueryParameter("baseUrl") String baseUrl){
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        public FormValidation doCheckBaseUrl(@QueryParameter("baseUrl") String baseUrl) {
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             int count = 0;
             for (Entry entry : entries) {
-                if(entry.getBaseUrl().equals(baseUrl)){
+                if (entry.getBaseUrl().equals(baseUrl)) {
                     count = count + 1;
                 }
             }
-            if(count>1){
+            if (count > 1) {
                 return FormValidation.error("Duplicates not Allowed.");
             }
             return FormValidation.validateRequired(baseUrl);
         }
 
-        public FormValidation doCheckApiToken(@QueryParameter("apiToken") String apiToken){
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        public FormValidation doCheckApiToken(@QueryParameter("apiToken") String apiToken) {
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             int count = 0;
             for (Entry entry : entries) {
-                if(entry.getApiToken().equals(apiToken)){
+                if (entry.getApiToken().equals(apiToken)) {
                     count = count + 1;
                 }
             }
-            if(count>1){
+            if (count > 1) {
                 return FormValidation.error("Duplicates not Allowed.");
             }
             return FormValidation.validateRequired(apiToken);
         }
 
-        public FormValidation doCheckRabbitMQHost(@QueryParameter("rabbitMQHost") String rabbitMQHost){
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        public FormValidation doCheckRabbitMQHost(@QueryParameter("rabbitMQHost") String rabbitMQHost) {
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             int count = 0;
             for (Entry entry : entries) {
-                if(entry.getRabbitMQHost().equals(rabbitMQHost)){
+                if (entry.getRabbitMQHost().equals(rabbitMQHost)) {
                     count = count + 1;
                 }
             }
-            if(count>1){
+            if (count > 1) {
                 return FormValidation.error("Duplicates not Allowed.");
             }
             return FormValidation.ok();

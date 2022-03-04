@@ -17,13 +17,10 @@ package com.ibm.devops.connect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ibm.devops.connect.DevOpsGlobalConfiguration;
-
 import net.sf.json.JSONObject;
 import net.sf.json.JSONArray;
 
 import com.google.gson.*;
-import jenkins.model.Jenkins;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -47,10 +44,13 @@ import org.apache.http.StatusLine;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.ssl.TrustStrategy;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import java.security.NoSuchAlgorithmException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -59,10 +59,10 @@ import javax.net.ssl.SSLContext;
 import com.ibm.devops.connect.Endpoints.EndpointManager;
 
 import org.apache.http.HttpEntity;
-import java.util.List;
+import java.util.*;
 
-public class CloudPublisher  {
-	public static final Logger log = LoggerFactory.getLogger(CloudPublisher.class);
+public class CloudPublisher {
+    public static final Logger log = LoggerFactory.getLogger(CloudPublisher.class);
 
     private final static String JENKINS_JOB_ENDPOINT_URL = "api/v1/jenkins/jobs";
     private final static String JENKINS_JOB_STATUS_ENDPOINT_URL = "api/v1/jenkins/jobStatus";
@@ -82,12 +82,14 @@ public class CloudPublisher  {
                 try {
                     SSLContextBuilder builder = new SSLContextBuilder();
                     builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-                    SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(builder.build(), new AllowAllHostnameVerifier());
+                    SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(builder.build(),
+                            new AllowAllHostnameVerifier());
                     RequestConfig config = RequestConfig.custom()
-                        .setConnectTimeout(requestTimeoutSeconds * 1000)
-                        .setConnectionRequestTimeout(requestTimeoutSeconds * 1000)
-                        .setSocketTimeout(requestTimeoutSeconds * 1000).build();
-                    httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).setDefaultRequestConfig(config).build();
+                            .setConnectTimeout(requestTimeoutSeconds * 1000)
+                            .setConnectionRequestTimeout(requestTimeoutSeconds * 1000)
+                            .setSocketTimeout(requestTimeoutSeconds * 1000).build();
+                    httpClient = HttpClients.custom().setSSLSocketFactory(sslsf).setDefaultRequestConfig(config)
+                            .build();
                 } catch (NoSuchAlgorithmException nsae) {
                     nsae.printStackTrace();
                 } catch (KeyManagementException kme) {
@@ -105,11 +107,12 @@ public class CloudPublisher  {
             if (acceptAllCerts) {
                 try {
                     TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
-                        public boolean isTrusted(X509Certificate[] certificate,  String authType) {
+                        public boolean isTrusted(X509Certificate[] certificate, String authType) {
                             return true;
                         }
                     };
-                    SSLContext sslContext = SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
+                    SSLContext sslContext = SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy)
+                            .build();
 
                     asyncHttpClient = HttpAsyncClients.custom()
                             .setSSLHostnameVerifier(SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)
@@ -128,9 +131,9 @@ public class CloudPublisher  {
         }
     }
 
-    private static String getSyncApiUrl(int instanceNum) {
+    private static String getSyncApiUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getSyncApiEndpoint(instanceNum);
+        return em.getSyncApiEndpoint(entry);
     }
 
     private static String getSyncApiUrl(String baseUrl) {
@@ -138,41 +141,41 @@ public class CloudPublisher  {
         return em.getSyncApiEndpoint(baseUrl);
     }
 
-    public static String getQualityDataUrl(int instanceNum) {
+    public static String getQualityDataUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getQualityDataEndpoint(instanceNum);
+        return em.getQualityDataEndpoint(entry);
     }
 
-    private static String getQualityDataRawUrl(int instanceNum) {
+    private static String getQualityDataRawUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getQualityDataRawEndpoint(instanceNum);
+        return em.getQualityDataRawEndpoint(entry);
     }
 
-    private static String getBuildUploadUrl(int instanceNum) {
+    private static String getBuildUploadUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getReleaseEvensApiEndpoint(instanceNum) + BUILD_UPLOAD_URL;
+        return em.getReleaseEvensApiEndpoint(entry) + BUILD_UPLOAD_URL;
     }
 
-    private static String getDeploymentUploadUrl(int instanceNum) {
+    private static String getDeploymentUploadUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getReleaseEvensApiEndpoint(instanceNum) + DEPLOYMENT_UPLOAD_URL;
+        return em.getReleaseEvensApiEndpoint(entry) + DEPLOYMENT_UPLOAD_URL;
     }
 
-    private static String getDotsUrl(int instanceNum) {
+    private static String getDotsUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getDotsEndpoint(instanceNum);
+        return em.getDotsEndpoint(entry);
     }
 
-    private static String getGraphqlUrl(int instanceNum) {
+    private static String getGraphqlUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getGraphqlApiEndpoint(instanceNum);
+        return em.getGraphqlApiEndpoint(entry);
     }
 
     /**
      * Upload the build information to Sync API - API V1.
      */
-    public static void uploadJobInfo(JSONObject jobJson, int instanceNum) {
-        String url = CloudPublisher.getSyncApiUrl(instanceNum) + JENKINS_JOB_ENDPOINT_URL;
+    public static void uploadJobInfo(JSONObject jobJson, Entry entry) {
+        String url = CloudPublisher.getSyncApiUrl(entry) + JENKINS_JOB_ENDPOINT_URL;
 
         JSONArray payload = new JSONArray();
         payload.add(jobJson);
@@ -181,86 +184,110 @@ public class CloudPublisher  {
         System.out.println(url);
         System.out.println(jobJson.toString());
 
-        CloudPublisher.postToSyncAPI(url, payload.toString(), instanceNum);
+        CloudPublisher.postToSyncAPI(url, payload.toString(), entry);
     }
 
-    public static void uploadJobStatus(JSONObject jobStatus, int instanceNum) {
-        String url = CloudPublisher.getSyncApiUrl(instanceNum) + JENKINS_JOB_STATUS_ENDPOINT_URL;
-        CloudPublisher.postToSyncAPI(url, jobStatus.toString(), instanceNum);
+    public static void uploadJobStatus(JSONObject jobStatus, Entry entry) {
+        String url = CloudPublisher.getSyncApiUrl(entry) + JENKINS_JOB_STATUS_ENDPOINT_URL;
+        CloudPublisher.postToSyncAPI(url, jobStatus.toString(), entry);
     }
 
-    public static String uploadBuild(String payload, int instanceNum) throws Exception {
+    public static String uploadBuild(String payload, Entry entry) throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String url = CloudPublisher.getBuildUploadUrl(instanceNum);
+        String url = CloudPublisher.getBuildUploadUrl(entry);
         CloseableHttpResponse response = null;
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudPublisher#uploadBuild";
 
         try {
             HttpPost postMethod = new HttpPost(url);
-            attachHeaders(postMethod, instanceNum);
+            attachHeaders(postMethod, entry);
             postMethod.setHeader("Content-Type", "application/json");
-            postMethod.setHeader("Authorization", "UserAccessKey " + entries.get(instanceNum).getApiToken());
+            postMethod.setHeader("Authorization", "UserAccessKey " + entry.getApiToken());
             postMethod.setEntity(new StringEntity(payload));
 
             response = httpClient.execute(postMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadBuild Uploaded Build successfully");
+                log.info(logPrefix + " Uploaded Build successfully");
             } else {
-                throw new Exception("Bad response code when uploading Build: " + response.getStatusLine() + " - " + resStr);
+                throw new Exception(logPrefix + "Bad response code when uploading Build: " + response.getStatusLine()
+                        + " - " + resStr);
             }
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadBuild Could not close uploadBuild response");
+                    log.error(logPrefix + " Could not close uploadBuild response");
                 }
             }
         }
         return resStr;
     }
 
-    public static String uploadDeployment(String payload, int instanceNum) throws Exception {
+    public static String uploadDeployment(String payload, Entry entry) throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String url = CloudPublisher.getDeploymentUploadUrl(instanceNum);
+        String url = CloudPublisher.getDeploymentUploadUrl(entry);
         CloseableHttpResponse response = null;
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-    
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudPublisher#uploadDeployment";
+
         try {
             HttpPost postMethod = new HttpPost(url);
-            attachHeaders(postMethod, instanceNum);
+            attachHeaders(postMethod, entry);
             postMethod.setHeader("Content-Type", "application/json");
-            postMethod.setHeader("Authorization", "UserAccessKey " + entries.get(instanceNum).getApiToken());
+            postMethod.setHeader("Authorization", "UserAccessKey " + entry.getApiToken());
             postMethod.setEntity(new StringEntity(payload));
 
             response = httpClient.execute(postMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadDeployment Uploaded Deployment successfully");
+                log.info(logPrefix + " Uploaded Deployment successfully");
             } else {
-                throw new Exception("Bad response code when uploading Deployment: " + response.getStatusLine() + " - " + resStr);
+                throw new Exception(logPrefix + "Bad response code when uploading Deployment: "
+                        + response.getStatusLine() + " - " + resStr);
             }
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadDeployment Could not close uploadDeployment response");
+                    log.error(logPrefix + " Could not close uploadDeployment response");
                 }
             }
         }
         return resStr;
     }
 
-    public static String checkGate(int instanceNum, String pipelineId, String stageName, String versionId) throws Exception {
+    public static List<Entry> getFinalEntriesList(String jobString, String instanceBaseUrl, List<Entry> entries) {
+        List<Entry> finalEntriesList = new ArrayList<>();
+        if (StringUtils.isNotEmpty(instanceBaseUrl)) {
+            for (Entry entry : entries) {
+                if (removeTrailingSlash(instanceBaseUrl).equals(removeTrailingSlash(entry.getBaseUrl()))) {
+                    finalEntriesList.add(entry);
+                    break;
+                }
+            }
+            if (finalEntriesList.size() == 0) {
+                log.info("Using default: " + jobString + "to All UCV Instances.");
+                return entries;
+            }
+        } else {
+            log.info("UCV Instance BaseUrl is not provided for " + jobString + ".  Using default: " + jobString
+                    + "to All UCV Instances.");
+            return entries;
+        }
+        return finalEntriesList;
+    }
+
+    public static String checkGate(Entry entry, String pipelineId, String stageName, String versionId)
+            throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String url = CloudPublisher.getDotsUrl(instanceNum);
+        String url = CloudPublisher.getDotsUrl(entry);
         CloseableHttpResponse response = null;
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudPublisher#checkGate";
 
         try {
             URIBuilder builder = new URIBuilder(url);
@@ -270,44 +297,44 @@ public class CloudPublisher  {
             URI uri = builder.build();
             System.out.println("TEST gates url: " + uri.toString());
             HttpGet getMethod = new HttpGet(uri);
-            attachHeaders(getMethod,instanceNum);
+            attachHeaders(getMethod, entry);
             getMethod.setHeader("Accept", "application/json");
-            getMethod.setHeader("Authorization", "UserAccessKey " + entries.get(instanceNum).getApiToken());
+            getMethod.setHeader("Authorization", "UserAccessKey " + entry.getApiToken());
 
             response = httpClient.execute(getMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#checkGate Gates Checked Successfully");
+                log.info(logPrefix + " Gates Checked Successfully");
             } else {
-                throw new Exception("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#checkGate Bad response code when uploading Deployment: " + response.getStatusLine() + " - " + resStr);
+                throw new Exception(logPrefix + " Bad response code when uploading Deployment: "
+                        + response.getStatusLine() + " - " + resStr);
             }
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#checkGate Could not close uploadDeployment response");
+                    log.error(logPrefix + " Could not close uploadDeployment response");
                 }
             }
         }
         return resStr;
     }
 
-    public static Boolean isPipeline(int instanceNum, String pipelineId) throws Exception {
+    public static Boolean isPipeline(Entry entry, String pipelineId) throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String url = CloudPublisher.getGraphqlUrl(instanceNum);
+        String url = CloudPublisher.getGraphqlUrl(entry);
         CloseableHttpResponse response = null;
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
         try {
             URIBuilder builder = new URIBuilder(url);
-            builder.setParameter("query", "{pipelineById(pipelineId: \""+ pipelineId + "\"){_id}}");
+            builder.setParameter("query", "{pipelineById(pipelineId: \"" + pipelineId + "\"){_id}}");
             URI uri = builder.build();
             System.out.println("TEST gates url: " + uri.toString());
             HttpGet getMethod = new HttpGet(uri);
-            attachHeaders(getMethod,instanceNum);
+            attachHeaders(getMethod, entry);
             getMethod.setHeader("Accept", "application/json");
-            getMethod.setHeader("Authorization", "UserAccessKey " + entries.get(instanceNum).getApiToken());
+            getMethod.setHeader("Authorization", "UserAccessKey " + entry.getApiToken());
 
             response = httpClient.execute(getMethod);
             resStr = EntityUtils.toString(response.getEntity());
@@ -322,17 +349,19 @@ public class CloudPublisher  {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#isPipeline Could not close isPipeline response");
+                    log.error("[UrbanCode Velocity " + entry.getBaseUrl()
+                            + "] CloudPublisher#isPipeline Could not close isPipeline response");
                 }
             }
         }
     }
 
-    public static boolean uploadQualityData(HttpEntity entity, String url, String userAccessKey, int instanceNum) throws Exception {
+    public static boolean uploadQualityData(HttpEntity entity, String url, String userAccessKey) throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
         CloseableHttpResponse response = null;
         boolean success = false;
+        String logPrefix = "[UrbanCode Velocity] CloudPublisher#uploadQualityData";
 
         try {
             HttpPost postMethod = new HttpPost(url);
@@ -342,7 +371,7 @@ public class CloudPublisher  {
             response = httpClient.execute(postMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity] CloudPublisher#uploadQualityData Upload Quality Data successfully");
+                log.info(logPrefix + " Upload Quality Data successfully");
                 success = true;
             }
             return success;
@@ -353,70 +382,73 @@ public class CloudPublisher  {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity] CloudPublisher#uploadQualityData Could not close uploadQualityData response");
+                    log.error(logPrefix + " Could not close uploadQualityData response");
                 }
             }
             if (!success) {
-                throw new Exception("[UrbanCode Velocity] CloudPublisher#uploadQualityData Bad response code when uploading Quality Data: " + status + " - " + resStr);
+                throw new Exception(
+                        logPrefix + " Bad response code when uploading Quality Data: " + status + " - " + resStr);
             }
         }
     }
 
-    public static void uploadQualityDataRaw(int instanceNum,String payload) throws Exception {
+    public static void uploadQualityDataRaw(Entry entry, String payload) throws Exception {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String url = CloudPublisher.getQualityDataRawUrl(instanceNum);
+        String url = CloudPublisher.getQualityDataRawUrl(entry);
         CloseableHttpResponse response = null;
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudPublisher#uploadMetricDataRaw";
 
         try {
             HttpPost postMethod = new HttpPost(url);
-            attachHeaders(postMethod, instanceNum);
+            attachHeaders(postMethod, entry);
             postMethod.setHeader("Content-Type", "application/json");
-            postMethod.setHeader("Authorization", "UserAccessKey " + entries.get(instanceNum).getApiToken());
+            postMethod.setHeader("Authorization", "UserAccessKey " + entry.getApiToken());
             postMethod.setEntity(new StringEntity(payload));
 
             response = httpClient.execute(postMethod);
             resStr = EntityUtils.toString(response.getEntity());
             if (response.getStatusLine().toString().contains("200")) {
-                log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadMetricDataRaw Uploaded Metric (raw) successfully");
+                log.info(logPrefix + " Uploaded Metric (raw) successfully");
             } else {
-                throw new Exception("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadMetricDataRaw Bad response code when uploading Metric (raw): " + response.getStatusLine() + " - " + resStr);
+                throw new Exception(logPrefix + " Bad response code when uploading Metric (raw): "
+                        + response.getStatusLine() + " - " + resStr);
             }
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadMetricDataRaw Could not close uploadQualityDataRaw response");
+                    log.error(logPrefix + " Could not close uploadQualityDataRaw response");
                 }
             }
         }
     }
 
-    private static void attachHeaders(AbstractHttpMessage message, int instanceNum) {
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-        String syncId = entries.get(instanceNum).getSyncId();
-        message.setHeader("sync_token", entries.get(instanceNum).getSyncToken());
+    private static void attachHeaders(AbstractHttpMessage message, Entry entry) {
+        String syncId = entry.getSyncId();
+        message.setHeader("sync_token", entry.getSyncToken());
         message.setHeader("sync_id", syncId);
         message.setHeader("instance_type", "JENKINS");
         message.setHeader("instance_id", syncId);
         message.setHeader("integration_id", syncId);
 
-        // Must include both _ and - headers because NGINX services don't pass _ headers by default and the original version of the Velocity services expected the _ headers
-        message.setHeader("sync-token", entries.get(instanceNum).getSyncToken());
+        // Must include both _ and - headers because NGINX services don't pass _ headers
+        // by default and the original version of the Velocity services expected the _
+        // headers
+        message.setHeader("sync-token", entry.getSyncToken());
         message.setHeader("sync-id", syncId);
         message.setHeader("instance-type", "JENKINS");
         message.setHeader("instance-id", syncId);
         message.setHeader("integration-id", syncId);
     }
 
-    private static void postToSyncAPI(String url, String payload, int instanceNum) {
-        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+    private static void postToSyncAPI(String url, String payload, Entry entry) {
         CloudPublisher.ensureAsyncHttpClientInitialized();
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudPublisher#uploadJobInfo";
         try {
             HttpPost postMethod = new HttpPost(url);
-            attachHeaders(postMethod, instanceNum);
+            attachHeaders(postMethod, entry);
             postMethod.setHeader("Content-Type", "application/json");
             StringEntity data = new StringEntity(payload);
             postMethod.setEntity(data);
@@ -424,36 +456,44 @@ public class CloudPublisher  {
             asyncHttpClient.execute(postMethod, new FutureCallback<HttpResponse>() {
                 public void completed(final HttpResponse response2) {
                     if (response2.getStatusLine().toString().contains("200")) {
-                        log.info("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Upload Job Information successfully");
+                        log.info(logPrefix + " Upload Job Information successfully");
                     } else {
-                        log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Error: Upload Job has bad status code, response status " + response2.getStatusLine());
+                        log.error(logPrefix + " Error: Upload Job has bad status code, response status "
+                                + response2.getStatusLine());
                     }
                     try {
                         EntityUtils.toString(response2.getEntity());
                     } catch (JsonSyntaxException e) {
-                        log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Invalid Json response, response: " + response2.getEntity());
+                        log.error(logPrefix + " Invalid Json response, response: " + response2.getEntity());
                     } catch (IOException e) {
-                        log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Input/Output error, response: " + response2.getEntity());
+                        log.error(logPrefix + " Input/Output error, response: " + response2.getEntity());
                     }
                 }
 
                 public void failed(final Exception ex) {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Error: Failed to upload Job, response status " + ex.getMessage());
+                    log.error(logPrefix + " Error: Failed to upload Job, response status " + ex.getMessage());
                     ex.printStackTrace();
                     if (ex instanceof IllegalStateException) {
-                        log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Please check if you have the access to the configured tenant.");
+                        log.error(logPrefix + " Please check if you have the access to the configured tenant.");
                     }
                 }
 
                 public void cancelled() {
-                    log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] CloudPublisher#uploadJobInfo Error: Upload Job cancelled.");
+                    log.error(logPrefix + " Error: Upload Job cancelled.");
                 }
             });
         } catch (UnsupportedEncodingException e) {
-            log.error("UnsupportedEncodingException trying to post job data", e);
+            log.error(logPrefix + "UnsupportedEncodingException trying to post job data", e);
         } catch (Exception e) {
-            log.error("Error trying to post job data", e);
+            log.error(logPrefix + "Error trying to post job data", e);
         }
+    }
+
+    public static String removeTrailingSlash(String url) {
+        if (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return url;
     }
 
     public static boolean testConnection(String syncId, String syncToken, String baseUrl) {
@@ -469,7 +509,9 @@ public class CloudPublisher  {
             getMethod.setHeader("instance_id", syncId);
             getMethod.setHeader("integration_id", syncId);
 
-            // Must include both _ and - headers because NGINX services don't pass _ headers by default and the original version of the Velocity services expected the _ headers
+            // Must include both _ and - headers because NGINX services don't pass _ headers
+            // by default and the original version of the Velocity services expected the _
+            // headers
             getMethod.setHeader("sync-token", syncToken);
             getMethod.setHeader("sync-id", syncId);
             getMethod.setHeader("instance-type", "JENKINS");
@@ -480,30 +522,30 @@ public class CloudPublisher  {
 
             if (response.getStatusLine().toString().contains("200")) {
                 // get 200 response
-                log.info("Connected to Velocity service successfully for: "+baseUrl);
+                log.info("Connected to Velocity service successfully for: " + baseUrl);
                 return true;
             } else {
-                log.warn("Could not authenticate to Velocity Services for: "+baseUrl);
+                log.warn("Could not authenticate to Velocity Services for: " + baseUrl);
                 log.warn(response.toString());
             }
         } catch (IllegalStateException e) {
-            log.error("Could not connect to Velocity for: "+baseUrl);
+            log.error("Could not connect to Velocity for: " + baseUrl);
             log.error(e.getMessage());
         } catch (UnsupportedEncodingException e) {
-            log.error("Could not connect to Velocity for: "+baseUrl);
+            log.error("Could not connect to Velocity for: " + baseUrl);
             log.error(e.getMessage());
         } catch (ClientProtocolException e) {
-            log.error("Could not connect to Velocity for: "+baseUrl);
+            log.error("Could not connect to Velocity for: " + baseUrl);
             log.error(e.getMessage());
         } catch (IOException e) {
-            log.error("Could not connect to Velocity for: "+baseUrl);
+            log.error("Could not connect to Velocity for: " + baseUrl);
             log.error(e.getMessage());
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (Exception e) {
-                    log.error("Could not close testconnection response for: "+baseUrl);
+                    log.error("Could not close testconnection response for: " + baseUrl);
                 }
             }
         }

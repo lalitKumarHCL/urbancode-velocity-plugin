@@ -57,16 +57,18 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
 
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
-    throws AbortException, InterruptedException, IOException {
+            throws AbortException, InterruptedException, IOException {
         Object fatalFailure = this.properties.get("fatal");
         String buildUrl = Jenkins.getInstance().getRootUrl() + build.getUrl();
         List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-        for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
-            if (!entries.get(instanceNum).isConfigured()) {
-                listener.getLogger().println("Could not upload junit tests to Velocity as there is no configuration specified.");
+        for (Entry entry : entries) {
+            if (!entry.isConfigured()) {
+                listener.getLogger()
+                        .println("Could not upload junit tests to Velocity as there is no configuration specified.");
                 return;
             }
-            boolean success = workspace.act(new FileUploader(this.properties, listener, buildUrl, CloudPublisher.getQualityDataUrl(instanceNum),  entries.get(instanceNum).getApiToken(), instanceNum));
+            boolean success = workspace.act(new FileUploader(this.properties, listener, buildUrl,
+                    CloudPublisher.getQualityDataUrl(entry), entry.getApiToken(), entry.getBaseUrl()));
             if (!success) {
                 if (fatalFailure != null && fatalFailure.toString().equals("true")) {
                     build.setResult(Result.FAILURE);
@@ -113,18 +115,20 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
         private String buildUrl;
         private String postUrl;
         private String userAccessKey;
-        private int instanceNum;
+        private String baseUrl;
 
-        public FileUploader(Map<String, String> properties, TaskListener listener, String buildUrl, String postUrl, String userAccessKey, int instanceNum) {
+        public FileUploader(Map<String, String> properties, TaskListener listener, String buildUrl, String postUrl,
+                String userAccessKey, String baseUrl) {
             this.properties = properties;
             this.listener = listener;
             this.buildUrl = buildUrl;
             this.postUrl = postUrl;
             this.userAccessKey = userAccessKey;
-            this.instanceNum = instanceNum;
+            this.baseUrl = baseUrl;
         }
 
-        @Override public Boolean invoke(File f, VirtualChannel channel) {
+        @Override
+        public Boolean invoke(File f, VirtualChannel channel) {
             listener.getLogger().println("Uploading JUnit File");
 
             String filePath = properties.get("filePath");
@@ -175,20 +179,22 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
             System.out.println("TEST payload: " + payload.toString(2));
 
             HttpEntity entity = MultipartEntityBuilder
-                .create()
-                .addTextBody("payload", payload.toString())
-                .addBinaryBody("file", new File(f, filePath), ContentType.create("application/octet-stream"), "filename")
-                .build();
+                    .create()
+                    .addTextBody("payload", payload.toString())
+                    .addBinaryBody("file", new File(f, filePath), ContentType.create("application/octet-stream"),
+                            "filename")
+                    .build();
 
             boolean success = false;
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
             try {
-                success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey, instanceNum);
+                success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey);
             } catch (Exception ex) {
-                listener.error("Error uploading quality data (" + entries.get(instanceNum).getBaseUrl() + "): " + ex.getClass() + " - " + ex.getMessage());
+                listener.error(
+                        "Error uploading quality data (" + baseUrl + "): " + ex.getClass() + " - " + ex.getMessage());
             }
             return success;
         }
+
         /**
          * Check the role of the executing node to follow jenkins new file access rules
          */

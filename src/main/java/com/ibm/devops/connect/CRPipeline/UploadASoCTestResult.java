@@ -34,7 +34,6 @@ import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
-
 import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
 import com.ibm.devops.connect.Entry;
@@ -59,17 +58,16 @@ public class UploadASoCTestResult extends Notifier {
 
     @DataBoundConstructor
     public UploadASoCTestResult(
-        String tenantId,
-        String environment,
-        String appId,
-        String appExtId,
-        String appName,
-        String buildUrl,
-        String metricDefinition,
-        String recordName,
-        String commitId,
-        String instanceBaseUrl
-    ) {
+            String tenantId,
+            String environment,
+            String appId,
+            String appExtId,
+            String appName,
+            String buildUrl,
+            String metricDefinition,
+            String recordName,
+            String commitId,
+            String instanceBaseUrl) {
         this.tenantId = tenantId;
         this.environment = environment;
         this.appId = appId;
@@ -82,17 +80,46 @@ public class UploadASoCTestResult extends Notifier {
         this.instanceBaseUrl = instanceBaseUrl;
     }
 
-    public String getTenantId() { return tenantId; }
-    public String getEnvironment() { return environment; }
-    public String getAppId() { return appId; }
-    public String getAppExtId() { return appExtId; }
-    public String getAppName() { return appName; }
-    public String getBuildUrl() { return buildUrl; }
-    public String getMetricDefinition() { return metricDefinition; }
-    public String getRecordName() { return recordName; }
-    public String getCommitId() { return commitId; }
-    public String getInstanceBaseUrl() { return this.instanceBaseUrl; }
-    
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public String getEnvironment() {
+        return environment;
+    }
+
+    public String getAppId() {
+        return appId;
+    }
+
+    public String getAppExtId() {
+        return appExtId;
+    }
+
+    public String getAppName() {
+        return appName;
+    }
+
+    public String getBuildUrl() {
+        return buildUrl;
+    }
+
+    public String getMetricDefinition() {
+        return metricDefinition;
+    }
+
+    public String getRecordName() {
+        return recordName;
+    }
+
+    public String getCommitId() {
+        return commitId;
+    }
+
+    public String getInstanceBaseUrl() {
+        return this.instanceBaseUrl;
+    }
+
     @Override
     public BuildStepMonitor getRequiredMonitorService() {
         // BUILD means this step will only be run after the previous build is
@@ -102,7 +129,7 @@ public class UploadASoCTestResult extends Notifier {
 
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-    throws AbortException, InterruptedException, IOException {
+            throws AbortException, InterruptedException, IOException {
         EnvVars envVars = build.getEnvironment(listener);
         // Resolving all passed ${VARIABLES}
         String tenantIdValue = envVars.expand(this.tenantId);
@@ -116,67 +143,52 @@ public class UploadASoCTestResult extends Notifier {
         String instanceBaseUrl = envVars.expand(this.instanceBaseUrl == null ? "" : this.instanceBaseUrl.toString());
 
         List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-        int instanceNum = 0;
-        if(instanceBaseUrl.equals("Upload ASoC Test Result to All UCV Instances")){
-            instanceNum = -1;
-        }else if(StringUtils.isNotEmpty(instanceBaseUrl)){
-            try {
-                int i=0;
-                for (Entry entry : entries) {
-                    if(removeTrailingSlash(instanceBaseUrl).equals(removeTrailingSlash(entry.getBaseUrl()))){
-                        instanceNum = i;
-                        break;
-                    }
-                    i=i+1;
-                }
-            } catch (NumberFormatException nfe) {
-                listener.getLogger().println("Provided UCV Instance BaseUrl : ("+instanceBaseUrl+") for Upload ASoC Test Result is not vaild.");
-                return false;
-            }
-        }else{
-            instanceNum = -1;
-            listener.getLogger().println("UCV Instance BaseUrl is not provided for Upload ASoC Test Result.  Using default: Upload ASoC Test Result to All UCV Instances");
-        }
+        List<Entry> finalEntriesList = CloudPublisher.getFinalEntriesList("Upload ASoC Test Result", instanceBaseUrl,
+                entries);
 
-        Job parentJob = (Job)build.getParent();
+        Job parentJob = (Job) build.getParent();
         Run thisBuild = parentJob.getBuildByNumber(build.getNumber());
         List<Action> actions = thisBuild.getActions();
 
         Class scanResultClass = null;
         Action actualAction = null;
 
-        for(Action action : actions) {
+        for (Action action : actions) {
             listener.getLogger().println(action.getClass().getName());
-            if(action.getClass().getName().equals("com.ibm.appscan.jenkins.plugin.actions.ResultsRetriever")) {
+            if (action.getClass().getName().equals("com.ibm.appscan.jenkins.plugin.actions.ResultsRetriever")) {
                 Class retrieverClass = action.getClass();
                 Action retrieverAction = action;
-                try { 
+                try {
                     listener.getLogger().println("[UCV] Triggering loading of ASoC Results");
                     Method checkResults = retrieverClass.getDeclaredMethod("checkResults", Run.class);
                     checkResults.invoke(retrieverAction, build);
                 } catch (NoSuchMethodException e1) {
-                    listener.getLogger().println("Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                    listener.getLogger().println(
+                            "Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
                 } catch (IllegalAccessException e2) {
-                    listener.getLogger().println("Could not acces the method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                    listener.getLogger().println(
+                            "Could not acces the method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
                 } catch (InvocationTargetException e3) {
-                    listener.getLogger().println("Could not invoke the target on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                    listener.getLogger().println(
+                            "Could not invoke the target on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
                 }
             }
         }
 
         build.reload();
         List<Action> actualBuildActions = build.getActions();
-        // actualAction = actualBuild.getAction(Class.forName("com.ibm.appscan.jenkins.plugin.actions.ScanResults").asSubclass(Actionable.class));
-        
-        for(Action act : actualBuildActions) {
+        // actualAction =
+        // actualBuild.getAction(Class.forName("com.ibm.appscan.jenkins.plugin.actions.ScanResults").asSubclass(Actionable.class));
+
+        for (Action act : actualBuildActions) {
             listener.getLogger().println("---->" + act.getClass().getName());
-            if(act.getClass().getName().equals("com.ibm.appscan.jenkins.plugin.actions.ScanResults")) {
+            if (act.getClass().getName().equals("com.ibm.appscan.jenkins.plugin.actions.ScanResults")) {
                 scanResultClass = act.getClass();
                 actualAction = act;
             }
         }
 
-        if(actualAction != null) {
+        if (actualAction != null) {
             listener.getLogger().println("We have found the Scan Results from AppScan");
 
             try {
@@ -187,14 +199,16 @@ public class UploadASoCTestResult extends Notifier {
                 Method getMediumCountMethod = scanResultClass.getDeclaredMethod("getMediumCount");
                 Method getHighCountMethod = scanResultClass.getDeclaredMethod("getHighCount");
 
-                int totalFindings = (int)getTotalFindingsMethod.invoke(actualAction);
-                int lowFindings = (int)getLowCountMethod.invoke(actualAction);
-                int mediumFindings = (int)getMediumCountMethod.invoke(actualAction);
-                int highFindings = (int)getHighCountMethod.invoke(actualAction);
-                int infoFindings = (int)getInfoCountMethod.invoke(actualAction);
+                int totalFindings = (int) getTotalFindingsMethod.invoke(actualAction);
+                int lowFindings = (int) getLowCountMethod.invoke(actualAction);
+                int mediumFindings = (int) getMediumCountMethod.invoke(actualAction);
+                int highFindings = (int) getHighCountMethod.invoke(actualAction);
+                int infoFindings = (int) getInfoCountMethod.invoke(actualAction);
 
-                // The ASoC plugin has a bug where the info count is 0.  That is not accurate, so we adjust
-                if(infoFindings == 0 && totalFindings != (lowFindings + mediumFindings + highFindings + infoFindings)) {
+                // The ASoC plugin has a bug where the info count is 0. That is not accurate, so
+                // we adjust
+                if (infoFindings == 0
+                        && totalFindings != (lowFindings + mediumFindings + highFindings + infoFindings)) {
                     infoFindings = totalFindings - (lowFindings + mediumFindings + highFindings);
                 }
 
@@ -235,44 +249,32 @@ public class UploadASoCTestResult extends Notifier {
                 payload.put("build", buildObj);
 
                 listener.getLogger().println("Payload Doc To Upload: " + payload.toString());
-                if(instanceNum == -1){
-                    int i = 0;
-                    for (Entry entry : entries) {
-                        listener.getLogger().println("Uploading Payload Doc (" + entry.getBaseUrl() + ").");
-                        try {
-                            if (!entry.isConfigured()) {
-                                listener.getLogger().println("Could not upload builds to Velocity as there is no configuration specified.");
-                                return false;
-                            }
-                            CloudPublisher.uploadQualityDataRaw(i, payload.toString());
-                            listener.getLogger().println("Upload Complete (" + entry.getBaseUrl() + ").");
-                        } catch (Exception ex) {
-                            listener.error("Error uploading ASoC data (" + entry.getBaseUrl() + "): " + ex.getClass() + " - " + ex.getMessage());
-                            build.setResult(Result.FAILURE);
-                        }
-                        i = i + 1;
-                    }
-                }else{
-                    listener.getLogger().println("Uploading Payload Doc (" + entries.get(instanceNum).getBaseUrl() + ").");
+                for (Entry entry : finalEntriesList) {
+                    String logString = entry.getBaseUrl();
+                    listener.getLogger().println("Uploading Payload Doc (" + logString + ").");
                     try {
-                        if (!entries.get(instanceNum).isConfigured()) {
-                            listener.getLogger().println("Could not upload builds to Velocity as there is no configuration specified.");
+                        if (!entry.isConfigured()) {
+                            listener.getLogger().println(
+                                    "Could not upload builds to Velocity as there is no configuration specified.");
                             return false;
                         }
-                        CloudPublisher.uploadQualityDataRaw(instanceNum, payload.toString());
-                        listener.getLogger().println("Upload Complete (" + entries.get(instanceNum).getBaseUrl() + ").");
+                        CloudPublisher.uploadQualityDataRaw(entry, payload.toString());
+                        listener.getLogger().println("Upload Complete (" + logString + ").");
                     } catch (Exception ex) {
-                        listener.error("Error uploading ASoC data (" + entries.get(instanceNum).getBaseUrl() + "): " + ex.getClass() + " - " + ex.getMessage());
+                        listener.error("Error uploading ASoC data (" + logString + "): " + ex.getClass() + " - "
+                                + ex.getMessage());
                         build.setResult(Result.FAILURE);
                     }
                 }
-
             } catch (NoSuchMethodException e1) {
-                listener.getLogger().println("Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                listener.getLogger().println(
+                        "Could not find method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
             } catch (IllegalAccessException e2) {
-                listener.getLogger().println("Could not acces the method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                listener.getLogger().println(
+                        "Could not acces the method on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
             } catch (InvocationTargetException e3) {
-                listener.getLogger().println("Could not invoke the target on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
+                listener.getLogger().println(
+                        "Could not invoke the target on the ScanResult Object.  Is this running the proper version of AppScan on Cloud plugin?");
             }
         }
         return true;
@@ -312,21 +314,16 @@ public class UploadASoCTestResult extends Notifier {
         public ListBoxModel doFillInstanceBaseUrlItems(@QueryParameter String currentInstanceBaseUrl) {
             // Create ListBoxModel from all projects for this AWS Device Farm account.
             List<ListBoxModel.Option> baseUrls = new ArrayList<ListBoxModel.Option>();
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             String all = "Upload ASoC Test Result to All UCV Instances";
             baseUrls.add(new ListBoxModel.Option(all, all, all.equals(currentInstanceBaseUrl)));
             for (Entry entry : entries) {
                 // We don't ignore case because these *should* be unique.
-                baseUrls.add(new ListBoxModel.Option(entry.getBaseUrl(), entry.getBaseUrl(), entry.getBaseUrl().equals(currentInstanceBaseUrl)));
+                baseUrls.add(new ListBoxModel.Option(entry.getBaseUrl(), entry.getBaseUrl(),
+                        entry.getBaseUrl().equals(currentInstanceBaseUrl)));
             }
             return new ListBoxModel(baseUrls);
         }
-    }
-
-    private String removeTrailingSlash(String url) {
-        if (url.endsWith("/")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
     }
 }

@@ -43,7 +43,8 @@ public class JenkinsPipelineStatus extends AbstractJenkinsStatus {
 
     public static final Logger log = LoggerFactory.getLogger(JenkinsPipelineStatus.class);
 
-    public JenkinsPipelineStatus(WorkflowRun workflowRun, CloudCause cloudCause, FlowNode node, TaskListener listener, boolean newStep, boolean isPaused) {
+    public JenkinsPipelineStatus(WorkflowRun workflowRun, CloudCause cloudCause, FlowNode node, TaskListener listener,
+            boolean newStep, boolean isPaused) {
         this.run = workflowRun;
         this.cloudCause = cloudCause;
         this.node = node;
@@ -61,15 +62,15 @@ public class JenkinsPipelineStatus extends AbstractJenkinsStatus {
     }
 
     protected FilePath getWorkspaceFilePath() {
-        FlowExecution exec = ((WorkflowRun)run).getExecution();
-        if(exec == null)
+        FlowExecution exec = ((WorkflowRun) run).getExecution();
+        if (exec == null)
             return null;
 
         FlowGraphWalker w = new FlowGraphWalker(exec);
         for (FlowNode n : w) {
             if (n.getClass().getName().equals("org.jenkinsci.plugins.workflow.cps.nodes.StepStartNode")) {
                 WorkspaceAction action = n.getAction(WorkspaceAction.class);
-                if(action != null) {
+                if (action != null) {
                     String workspace = action.getPath().toString();
                     FilePath result = new FilePath(new File(workspace));
 
@@ -82,16 +83,18 @@ public class JenkinsPipelineStatus extends AbstractJenkinsStatus {
     }
 
     protected void evaluatePipelineStep() {
-        if(newStep && node == null) {
-            cloudCause.addStep("Starting Jenkins Pipeline", JobStatus.success.toString(), "Successfully started pipeline...", false);
-        } else if(newStep && node != null) {
+        if (newStep && node == null) {
+            cloudCause.addStep("Starting Jenkins Pipeline", JobStatus.success.toString(),
+                    "Successfully started pipeline...", false);
+        } else if (newStep && node != null) {
             cloudCause.addStep(node.getDisplayName(), JobStatus.started.toString(), "Started stage", false);
         } else if (isPaused && node != null) {
-            cloudCause.addStep(node.getDisplayName(), JobStatus.started.toString(), "Please acknowledge the Jenkins Pipeline input", false);
-        } else if(!newStep && node != null) {
+            cloudCause.addStep(node.getDisplayName(), JobStatus.started.toString(),
+                    "Please acknowledge the Jenkins Pipeline input", false);
+        } else if (!newStep && node != null) {
 
-            if(node.getError() == null) {
-                if(cloudCause.isCreatedByCR()) {
+            if (node.getError() == null) {
+                if (cloudCause.isCreatedByCR()) {
                     cloudCause.updateLastStep(null, JobStatus.success.toString(), "Stage is successful", false);
                 } else {
                     cloudCause.addStep(null, JobStatus.success.toString(), "Stage is successful", false);
@@ -100,7 +103,7 @@ public class JenkinsPipelineStatus extends AbstractJenkinsStatus {
                 ErrorAction errorObj = node.getError();
                 String displayText = "Unknown Error";
 
-                if( errorObj != null ) {
+                if (errorObj != null) {
                     displayText = errorObj.getDisplayName();
                 }
                 cloudCause.updateLastStep(null, JobStatus.failure.toString(), displayText, false);

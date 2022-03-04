@@ -47,9 +47,10 @@ public class JenkinsJob {
 	final private Item item;
 	public static final Logger log = LoggerFactory.getLogger(JenkinsJob.class);
 
-	public JenkinsJob (Item item) {
-		this.item= item;
+	public JenkinsJob(Item item) {
+		this.item = item;
 	}
+
 	// TODO: see what this guy can do for us:
 	// - start: start a job
 	// - getStatus: get the status of a job
@@ -58,10 +59,10 @@ public class JenkinsJob {
 	// - other stuff?
 	public JSONObject toJson() {
 
-		String displayName= this.item.getDisplayName();
-		String name= this.item.getName();
-		String fullName= this.item.getFullName();
-		String jobUrl= this.item.getUrl();
+		String displayName = this.item.getDisplayName();
+		String name = this.item.getName();
+		String fullName = this.item.getFullName();
+		String jobUrl = this.item.getUrl();
 
 		JSONObject jobToJson = new JSONObject();
 		jobToJson.put("displayName", displayName);
@@ -72,7 +73,7 @@ public class JenkinsJob {
 
 		String jobId;
 
-		if(IdStore.getId(this.item) != null) {
+		if (IdStore.getId(this.item) != null) {
 			jobId = IdStore.getId(this.item);
 		} else {
 			IdStore.makeId(this.item);
@@ -82,7 +83,7 @@ public class JenkinsJob {
 		jobToJson.put("id", jobId);
 		jobToJson.put("instanceType", "JENKINS");
 
-		if(this.item instanceof WorkflowJob) {
+		if (this.item instanceof WorkflowJob) {
 			jobToJson.put("isPipeline", true);
 			// TODO: Find a way to get Stage definitions
 		} else {
@@ -98,7 +99,8 @@ public class JenkinsJob {
 		JSONArray result = new JSONArray();
 
 		if (this.item instanceof WorkflowJob) {
-			ParametersDefinitionProperty paramDefProperty = ((WorkflowJob)this.item).getProperty(ParametersDefinitionProperty.class);
+			ParametersDefinitionProperty paramDefProperty = ((WorkflowJob) this.item)
+					.getProperty(ParametersDefinitionProperty.class);
 			if (paramDefProperty != null) {
 				List<ParameterDefinition> paramDefs = paramDefProperty.getParameterDefinitions();
 				for (ParameterDefinition paramDef : paramDefs) {
@@ -106,11 +108,12 @@ public class JenkinsJob {
 				}
 			}
 		} else if (this.item instanceof AbstractProject) {
-			List<Action> actions = ((AbstractProject)this.item).getActions();
+			List<Action> actions = ((AbstractProject) this.item).getActions();
 
-			for(Action action : actions) {
+			for (Action action : actions) {
 				if (action instanceof ParametersDefinitionProperty) {
-					List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty)action).getParameterDefinitions();
+					List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty) action)
+							.getParameterDefinitions();
 					for (ParameterDefinition paramDef : paraDefs) {
 						result.add(convertJobParameter(paramDef));
 					}
@@ -132,8 +135,8 @@ public class JenkinsJob {
 			result.put("defaultValue", pValue.getValue());
 		}
 
-		if(paramDef instanceof ChoiceParameterDefinition) {
-			List<String> options = ((ChoiceParameterDefinition)paramDef).getChoices();
+		if (paramDef instanceof ChoiceParameterDefinition) {
+			List<String> options = ((ChoiceParameterDefinition) paramDef).getChoices();
 			result.put("options", options);
 		}
 

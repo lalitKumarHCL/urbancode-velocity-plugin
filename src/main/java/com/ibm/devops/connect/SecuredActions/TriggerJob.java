@@ -4,7 +4,6 @@ import com.ibm.devops.connect.CloudWorkListener2;
 import jenkins.model.Jenkins;
 import hudson.model.AbstractItem;
 
-
 import com.ibm.cloud.urbancode.connect.client.ConnectSocket;
 
 import java.util.List;
@@ -12,10 +11,11 @@ import java.util.List;
 public class TriggerJob extends AbstractSecuredAction {
 
     protected void run(AbstractSecuredAction.ParamObj paramObj) {
-        TriggerJobParamObj triggerJobParamObj = (TriggerJobParamObj)paramObj;
+        TriggerJobParamObj triggerJobParamObj = (TriggerJobParamObj) paramObj;
 
         CloudWorkListener2 cwl = new CloudWorkListener2();
-        cwl.callSecured(triggerJobParamObj.socket, triggerJobParamObj.event, triggerJobParamObj.getJenkinsAuthenticationError(), triggerJobParamObj.args);
+        cwl.callSecured(triggerJobParamObj.socket, triggerJobParamObj.event,
+                triggerJobParamObj.getJenkinsAuthenticationError(), triggerJobParamObj.args);
     }
 
     public class TriggerJobParamObj extends AbstractSecuredAction.ParamObj {

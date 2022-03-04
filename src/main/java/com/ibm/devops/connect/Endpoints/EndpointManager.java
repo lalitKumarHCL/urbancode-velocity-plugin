@@ -1,10 +1,12 @@
 package com.ibm.devops.connect.Endpoints;
 
+import com.ibm.devops.connect.Entry;
+
 public class EndpointManager {
 
     // TODO: Make configurable at build time or otherwise
-    private static String profile = "Velocity";
-    //private static String profile = "YS1";
+    // private static String profile = "Velocity";
+    // private static String profile = "YS1";
 
     private IEndpoints endpointProvider;
 
@@ -12,47 +14,47 @@ public class EndpointManager {
         endpointProvider = new EndpointsVelocity();
     }
 
-    public String getSyncApiEndpoint(int instanceNum) {
-        return endpointProvider.getSyncApiEndpoint(instanceNum);
+    public String getSyncApiEndpoint(Entry entry) {
+        return endpointProvider.getSyncApiEndpoint(entry);
     }
 
-    public String getGraphqlApiEndpoint(int instanceNum) {
-        return endpointProvider.getGraphqlApiEndpoint(instanceNum);
+    public String getGraphqlApiEndpoint(Entry entry) {
+        return endpointProvider.getGraphqlApiEndpoint(entry);
     }
 
-    public String getPipelinesEndpoint(int instanceNum) {
-        return endpointProvider.getPipelinesEndpoint(instanceNum);
+    public String getPipelinesEndpoint(Entry entry) {
+        return endpointProvider.getPipelinesEndpoint(entry);
     }
 
-    public String getQualityDataEndpoint(int instanceNum) {
-        return endpointProvider.getQualityDataEndpoint(instanceNum);
+    public String getQualityDataEndpoint(Entry entry) {
+        return endpointProvider.getQualityDataEndpoint(entry);
     }
 
-    public String getQualityDataRawEndpoint(int instanceNum) {
-        return endpointProvider.getQualityDataRawEndpoint(instanceNum);
+    public String getQualityDataRawEndpoint(Entry entry) {
+        return endpointProvider.getQualityDataRawEndpoint(entry);
     }
 
     public String getSyncApiEndpoint(String baseUrl) {
         return endpointProvider.getSyncApiEndpoint(baseUrl);
     }
 
-    public String getReleaseEvensApiEndpoint(int instanceNum) {
-        return endpointProvider.getReleaseEvensApiEndpoint(instanceNum);
+    public String getReleaseEvensApiEndpoint(Entry entry) {
+        return endpointProvider.getReleaseEvensApiEndpoint(entry);
     }
 
-    public String getDotsEndpoint(int instanceNum) {
-        return endpointProvider.getDotsEndpoint(instanceNum);
+    public String getDotsEndpoint(Entry entry) {
+        return endpointProvider.getDotsEndpoint(entry);
     }
 
-    public String getSyncStoreEndpoint(int instanceNum) {
-        return endpointProvider.getSyncStoreEndpoint(instanceNum);
+    public String getSyncStoreEndpoint(Entry entry) {
+        return endpointProvider.getSyncStoreEndpoint(entry);
     }
 
-    public String getConnectEndpoint(int instanceNum) {
-        return endpointProvider.getConnectEndpoint(instanceNum);
+    public String getConnectEndpoint(Entry entry) {
+        return endpointProvider.getConnectEndpoint(entry);
     }
 
-    public String getVelocityHostname(int instanceNum) {
-        return endpointProvider.getVelocityHostname(instanceNum);
+    public String getVelocityHostname(Entry entry) {
+        return endpointProvider.getVelocityHostname(entry);
     }
 }

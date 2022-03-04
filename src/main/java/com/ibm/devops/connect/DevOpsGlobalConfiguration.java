@@ -45,22 +45,23 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
 
     @CopyOnWrite
     private String credentialsId;
-    private List<Entry> entries= new ArrayList<>();
+    private List<Entry> entries = new ArrayList<>();
 
     public DevOpsGlobalConfiguration() {
         load();
     }
 
     public List<Entry> getEntries() {
-    	return entries;
+        return entries;
     }
 
     public void setEntries(List<Entry> entries) {
-        List<Entry> entriesFinal= new ArrayList<>();
+        List<Entry> entriesFinal = new ArrayList<>();
         for (Entry entry : entries) {
-            if(StringUtils.isNotEmpty(entry.getSyncId()) && StringUtils.isNotEmpty(entry.getBaseUrl()) && StringUtils.isNotEmpty(entry.getApiToken()) && StringUtils.isNotEmpty(entry.getSyncToken())){
+            if (StringUtils.isNotEmpty(entry.getSyncId()) && StringUtils.isNotEmpty(entry.getBaseUrl())
+                    && StringUtils.isNotEmpty(entry.getApiToken()) && StringUtils.isNotEmpty(entry.getSyncToken())) {
                 entriesFinal.add(entry);
-            }  
+            }
         }
         this.entries = entriesFinal;
         save();
@@ -85,7 +86,7 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
 
         reconnectCloudSocket();
 
-        return super.configure(req,formData);
+        return super.configure(req, formData);
     }
 
     // for the future multi-region use
@@ -95,8 +96,9 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
     }
 
     /**
-    * This method is called to populate the credentials list on the Jenkins config page.
-    */
+     * This method is called to populate the credentials list on the Jenkins config
+     * page.
+     */
     public ListBoxModel doFillCredentialsIdItems(@QueryParameter("target") final String target) {
         StandardListBoxModel result = new StandardListBoxModel();
         result.includeEmptyValue();
@@ -105,20 +107,18 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
                         StandardUsernameCredentials.class,
                         Jenkins.getInstance(),
                         ACL.SYSTEM,
-                        URIRequirementBuilder.fromUri(target).build()
-                )
-        );
+                        URIRequirementBuilder.fromUri(target).build()));
         return result;
     }
 
     public StandardUsernamePasswordCredentials getCredentialsObj() {
         List<StandardUsernamePasswordCredentials> standardCredentials = CredentialsProvider.lookupCredentials(
-                    StandardUsernamePasswordCredentials.class,
-                    Jenkins.getInstance(),
-                    ACL.SYSTEM);
+                StandardUsernamePasswordCredentials.class,
+                Jenkins.getInstance(),
+                ACL.SYSTEM);
 
-        StandardUsernamePasswordCredentials credentials =
-                CredentialsMatchers.firstOrNull(standardCredentials, CredentialsMatchers.withId(this.credentialsId));
+        StandardUsernamePasswordCredentials credentials = CredentialsMatchers.firstOrNull(standardCredentials,
+                CredentialsMatchers.withId(this.credentialsId));
 
         return credentials;
     }
@@ -129,7 +129,7 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         connectComputerListener.onOnline(Jenkins.getInstance().toComputer());
     }
 
-    public FormValidation doCheckCredentialsId(@QueryParameter("credentialsId") String credentialsId){
+    public FormValidation doCheckCredentialsId(@QueryParameter("credentialsId") String credentialsId) {
         return FormValidation.validateRequired(credentialsId);
     }
 }

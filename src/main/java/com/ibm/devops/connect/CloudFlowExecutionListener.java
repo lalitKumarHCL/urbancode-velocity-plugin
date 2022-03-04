@@ -51,7 +51,7 @@ import java.io.IOException;
 
 @Extension
 public class CloudFlowExecutionListener extends FlowExecutionListener {
-	public static final Logger log = LoggerFactory.getLogger(CloudFlowExecutionListener.class);
+    public static final Logger log = LoggerFactory.getLogger(CloudFlowExecutionListener.class);
 
     @Override
     public void onRunning(FlowExecution execution) {

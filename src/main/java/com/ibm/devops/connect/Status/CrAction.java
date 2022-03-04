@@ -18,7 +18,7 @@ public class CrAction implements Action {
         return draData;
     }
 
-    public void setDRAData (DRAData draData) {
+    public void setDRAData(DRAData draData) {
         this.draData = draData;
     }
 
@@ -26,23 +26,23 @@ public class CrAction implements Action {
         return sourceData;
     }
 
-    public void setSourceData (SourceData sourceData) {
+    public void setSourceData(SourceData sourceData) {
         this.sourceData = sourceData;
     }
 
-    public void updateCrProperties (Map<String, String> properties) {
+    public void updateCrProperties(Map<String, String> properties) {
         this.crProperties.putAll(properties);
     }
 
-    public Map<String, String> getCrProperties () {
+    public Map<String, String> getCrProperties() {
         return crProperties;
     }
 
-    public void updateEnvProperties (Map<String, String> properties) {
+    public void updateEnvProperties(Map<String, String> properties) {
         this.envProperties.putAll(properties);
     }
 
-    public Map<String, String> getEnvProperties () {
+    public Map<String, String> getEnvProperties() {
         return envProperties;
     }
 

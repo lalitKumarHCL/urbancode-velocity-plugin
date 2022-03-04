@@ -24,7 +24,7 @@ public class ReconnectExecutor {
 
     private CloudSocketComponent cloudSocketInstance;
 
-    public ReconnectExecutor (CloudSocketComponent cloudSocketInstance) {
+    public ReconnectExecutor(CloudSocketComponent cloudSocketInstance) {
         this.cloudSocketInstance = cloudSocketInstance;
     }
 
@@ -38,15 +38,15 @@ public class ReconnectExecutor {
 
     private class ReconnectRunner implements Runnable {
         @Override
-        public void run()
-        {
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-            for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
-            if (!cloudSocketInstance.isAMQPConnected(instanceNum) && entries.get(instanceNum).isConfigured()) {
+        public void run() {
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
+            for (Entry entry : entries) {
+                if (!cloudSocketInstance.isAMQPConnected(entry) && entry.isConfigured()) {
                     try {
-                        cloudSocketInstance.connectToAMQP(instanceNum);
+                        cloudSocketInstance.connectToAMQP(entry);
                     } catch (Exception e) {
-                        log.error("[UrbanCode Velocity "+ entries.get(instanceNum).getBaseUrl() + "] Unable to Reconnect to UCV AMQP", e);
+                        log.error("[UrbanCode Velocity " + entry.getBaseUrl() + "] Unable to Reconnect to UCV AMQP", e);
                     }
                 }
             }

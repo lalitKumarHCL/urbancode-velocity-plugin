@@ -40,7 +40,6 @@ import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
 import com.ibm.devops.connect.Entry;
 import java.util.List;
-import org.apache.commons.lang.StringUtils;
 import hudson.util.ListBoxModel;
 import org.kohsuke.stapler.QueryParameter;
 import java.util.ArrayList;
@@ -71,28 +70,27 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
 
     @DataBoundConstructor
     public UploadMetricsFile(
-        String tenantId,
-        String name,
-        String filePath,
-        String testSetName,
-        String environment,
-        Boolean combineTestSuites,
-        Boolean fatal,
-        Boolean debug,
-        String pluginType,
-        String dataFormat,
-        String recordName,
-        String metricDefinitionId,
-        String metricsRecordUrl,
-        String description,
-        String executionDate,
-        String buildId,
-        String buildUrl,
-        String appId,
-        String appName,
-        String appExtId,
-        String instanceBaseUrl
-    ) {
+            String tenantId,
+            String name,
+            String filePath,
+            String testSetName,
+            String environment,
+            Boolean combineTestSuites,
+            Boolean fatal,
+            Boolean debug,
+            String pluginType,
+            String dataFormat,
+            String recordName,
+            String metricDefinitionId,
+            String metricsRecordUrl,
+            String description,
+            String executionDate,
+            String buildId,
+            String buildUrl,
+            String appId,
+            String appName,
+            String appExtId,
+            String instanceBaseUrl) {
         this.tenantId = tenantId;
         this.name = name;
         this.filePath = filePath;
@@ -116,31 +114,93 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         this.instanceBaseUrl = instanceBaseUrl;
     }
 
-    public String getTenantId() { return this.tenantId; }
-    public String getName() { return this.name; }
-    public String getFilePath() { return this.filePath; }
-    public String getTestSetName() { return this.testSetName; }
-    public String getEnvironment() { return this.environment; }
-    public Boolean getCombineTestSuites() { return this.combineTestSuites; }
-    public Boolean getFatal() { return this.fatal; }
-    public Boolean getDebug() { return this.debug; }
-    public String getPluginType() { return this.pluginType; }
-    public String getDataFormat() { return this.dataFormat; }
-    public String getRecordName() { return this.recordName; }
-    public String getMetricDefinitionId() { return this.metricDefinitionId; }
-    public String getMetricsRecordUrl() { return this.metricsRecordUrl; }
-    public String getDescription() { return this.description; }
-    public String getExecutionDate() { return this.executionDate; }
-    public String getBuildId() { return this.buildId; }
-    public String getBuildUrl() { return this.buildUrl; }
-    public String getAppId() { return this.appId; }
-    public String getAppName() { return this.appName; }
-    public String getAppExtId() { return this.appExtId; }
-    public String getInstanceBaseUrl() { return this.instanceBaseUrl; }
+    public String getTenantId() {
+        return this.tenantId;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public String getFilePath() {
+        return this.filePath;
+    }
+
+    public String getTestSetName() {
+        return this.testSetName;
+    }
+
+    public String getEnvironment() {
+        return this.environment;
+    }
+
+    public Boolean getCombineTestSuites() {
+        return this.combineTestSuites;
+    }
+
+    public Boolean getFatal() {
+        return this.fatal;
+    }
+
+    public Boolean getDebug() {
+        return this.debug;
+    }
+
+    public String getPluginType() {
+        return this.pluginType;
+    }
+
+    public String getDataFormat() {
+        return this.dataFormat;
+    }
+
+    public String getRecordName() {
+        return this.recordName;
+    }
+
+    public String getMetricDefinitionId() {
+        return this.metricDefinitionId;
+    }
+
+    public String getMetricsRecordUrl() {
+        return this.metricsRecordUrl;
+    }
+
+    public String getDescription() {
+        return this.description;
+    }
+
+    public String getExecutionDate() {
+        return this.executionDate;
+    }
+
+    public String getBuildId() {
+        return this.buildId;
+    }
+
+    public String getBuildUrl() {
+        return this.buildUrl;
+    }
+
+    public String getAppId() {
+        return this.appId;
+    }
+
+    public String getAppName() {
+        return this.appName;
+    }
+
+    public String getAppExtId() {
+        return this.appExtId;
+    }
+
+    public String getInstanceBaseUrl() {
+        return this.instanceBaseUrl;
+    }
 
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
-    throws AbortException, InterruptedException, IOException {
+            throws AbortException, InterruptedException, IOException {
         EnvVars envVars = build.getEnvironment(listener);
 
         String testSetName = envVars.expand(this.testSetName);
@@ -156,7 +216,8 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         String metricDefinitionId = envVars.expand(this.metricDefinitionId);
         String metricsRecordUrl = envVars.expand(this.metricsRecordUrl);
         String description = envVars.expand(this.description);
-        String combineTestSuites = envVars.expand(this.combineTestSuites == null ? "" : this.combineTestSuites.toString());
+        String combineTestSuites = envVars
+                .expand(this.combineTestSuites == null ? "" : this.combineTestSuites.toString());
         String fatal = envVars.expand(this.fatal == null ? "" : this.fatal.toString());
         String debug = envVars.expand(this.debug == null ? "" : this.debug.toString());
         String executionDate = envVars.expand(this.executionDate);
@@ -165,30 +226,9 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         String instanceBaseUrl = envVars.expand(this.instanceBaseUrl == null ? "" : this.instanceBaseUrl.toString());
 
         List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-        int instanceNum = 0;
-        if(instanceBaseUrl.equals("Upload Metric File to All UCV Instances")){
-            instanceNum = -1;
-        }else if(StringUtils.isNotEmpty(instanceBaseUrl)){
-            try {
-                int i=0;
-                for (Entry entry : entries) {
-                    if(removeTrailingSlash(instanceBaseUrl).equals(removeTrailingSlash(entry.getBaseUrl()))){
-                        instanceNum = i;
-                        break;
-                    }
-                    i=i+1;
-                }
-            } catch (NumberFormatException nfe) {
-                listener.getLogger().println("Provided UCV Instance BaseUrl : ("+instanceBaseUrl+") for Upload Metric File is not vaild.");
-                return;
-            }
-        }else{
-            instanceNum = -1;
-            listener.getLogger().println("UCV Instance BaseUrl is not provided for Upload Metric File.  Using default: Upload Metric File to All UCV Instances");
-        }
-
+        List<Entry> finalEntriesList = CloudPublisher.getFinalEntriesList("Upload Metric File", instanceBaseUrl,
+                entries);
         JSONObject payload = new JSONObject();
-
         payload.put("dataSet", testSetName);
         if (environment != null && !environment.equals("")) {
             payload.put("environment", environment);
@@ -231,7 +271,8 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         payload.put("record", record);
 
         JSONObject options = new JSONObject();
-        options.put("combineTestSuites", combineTestSuites != null && !combineTestSuites.equals("") ? combineTestSuites.toString() : "true");
+        options.put("combineTestSuites",
+                combineTestSuites != null && !combineTestSuites.equals("") ? combineTestSuites.toString() : "true");
         payload.put("options", options);
 
         JSONObject buildObj = new JSONObject();
@@ -249,66 +290,40 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
             listener.getLogger().println("payload: " + payload.toString());
         }
         System.out.println("TEST payload: " + payload.toString(2));
-
-        if(instanceNum == -1){
-            int i = 0;
-            for (Entry entry : entries) {
-
-                listener.getLogger().println("Uploading metric \"" + name + "\" to UrbanCode Velocity (" + entry.getBaseUrl() + ").");
-                if (!entry.isConfigured()) {
-                    listener.getLogger().println("Could not upload metric file to Velocity as there is no configuration specified.");
-                    return;
-                }
-                boolean success = workspace.act(new FileUploader(filePath, payload.toString(), listener, CloudPublisher.getQualityDataUrl(i), entry.getApiToken(), i));
-                if (!success) {
-                    listener.getLogger().println("Problem uploading metrics file to UrbanCode Velocity (" + entry.getBaseUrl() + ").");
-                    if (fatal.equals("true")) {
-                        if (debug.equals("true")) {
-                            listener.getLogger().println("Failing build due to fatal=true (" + entry.getBaseUrl() + ").");
-                        }
-                        build.setResult(Result.FAILURE);
-                    } else if (fatal.equals("false")) {
-                        if (debug.equals("true")) {
-                            listener.getLogger().println("Not changing build result due to fatal=false (" + entry.getBaseUrl() + ").");
-                        }
-                    } else {
-                        if (debug.equals("true")) {
-                            listener.getLogger().println("Marking build as unstable due to fatal flag not set (" + entry.getBaseUrl() + ").");
-                        }
-                        build.setResult(Result.UNSTABLE);
-                    }
-                } else {
-                    listener.getLogger().println("Successfully uploaded metric file to UrbanCode Velocity (" + entry.getBaseUrl() + ").");
-                }
-                i = i + 1;
-            }
-        } else{
-
-            listener.getLogger().println("Uploading metric \"" + name + "\" to UrbanCode Velocity (" + entries.get(instanceNum).getBaseUrl() + ").");
-            if (!entries.get(instanceNum).isConfigured()) {
-                listener.getLogger().println("Could not upload metric file to Velocity as there is no configuration specified.");
+        for (Entry entry : finalEntriesList) {
+            String logString = entry.getBaseUrl();
+            listener.getLogger()
+                    .println("Uploading metric \"" + name + "\" to UrbanCode Velocity (" + logString + ").");
+            if (!entry.isConfigured()) {
+                listener.getLogger()
+                        .println("Could not upload metric file to Velocity as there is no configuration specified.");
                 return;
             }
-            boolean success = workspace.act(new FileUploader(filePath, payload.toString(), listener, CloudPublisher.getQualityDataUrl(instanceNum), entries.get(instanceNum).getApiToken(), instanceNum));
+            boolean success = workspace.act(new FileUploader(filePath, payload.toString(), listener,
+                    CloudPublisher.getQualityDataUrl(entry), entry.getApiToken()));
             if (!success) {
-                listener.getLogger().println("Problem uploading metrics file to UrbanCode Velocity (" + entries.get(instanceNum).getBaseUrl() + ").");
+                listener.getLogger()
+                        .println("Problem uploading metrics file to UrbanCode Velocity (" + logString + ").");
                 if (fatal.equals("true")) {
                     if (debug.equals("true")) {
-                        listener.getLogger().println("Failing build due to fatal=true (" + entries.get(instanceNum).getBaseUrl() + ").");
+                        listener.getLogger().println("Failing build due to fatal=true (" + logString + ").");
                     }
                     build.setResult(Result.FAILURE);
                 } else if (fatal.equals("false")) {
                     if (debug.equals("true")) {
-                        listener.getLogger().println("Not changing build result due to fatal=false (" + entries.get(instanceNum).getBaseUrl() + ").");
+                        listener.getLogger()
+                                .println("Not changing build result due to fatal=false (" + logString + ").");
                     }
                 } else {
                     if (debug.equals("true")) {
-                        listener.getLogger().println("Marking build as unstable due to fatal flag not set (" + entries.get(instanceNum).getBaseUrl() + ").");
+                        listener.getLogger()
+                                .println("Marking build as unstable due to fatal flag not set (" + logString + ").");
                     }
                     build.setResult(Result.UNSTABLE);
                 }
             } else {
-                listener.getLogger().println("Successfully uploaded metric file to UrbanCode Velocity (" + entries.get(instanceNum).getBaseUrl() + ").");
+                listener.getLogger()
+                        .println("Successfully uploaded metric file to UrbanCode Velocity (" + logString + ").");
             }
         }
     }
@@ -345,12 +360,14 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         public ListBoxModel doFillInstanceBaseUrlItems(@QueryParameter String currentInstanceBaseUrl) {
             // Create ListBoxModel from all projects for this AWS Device Farm account.
             List<ListBoxModel.Option> baseUrls = new ArrayList<ListBoxModel.Option>();
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
             String all = "Upload Metric File to All UCV Instances";
             baseUrls.add(new ListBoxModel.Option(all, all, all.equals(currentInstanceBaseUrl)));
             for (Entry entry : entries) {
                 // We don't ignore case because these *should* be unique.
-                baseUrls.add(new ListBoxModel.Option(entry.getBaseUrl(), entry.getBaseUrl(), entry.getBaseUrl().equals(currentInstanceBaseUrl)));
+                baseUrls.add(new ListBoxModel.Option(entry.getBaseUrl(), entry.getBaseUrl(),
+                        entry.getBaseUrl().equals(currentInstanceBaseUrl)));
             }
             return new ListBoxModel(baseUrls);
         }
@@ -363,18 +380,18 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         private String postUrl;
         private String userAccessKey;
         private TaskListener listener;
-        private int instanceNum;
 
-        public FileUploader(String filePath, String payload, TaskListener listener, String postUrl, String userAccessKey, int instanceNum) {
+        public FileUploader(String filePath, String payload, TaskListener listener, String postUrl,
+                String userAccessKey) {
             this.filePath = filePath;
             this.payload = payload;
             this.listener = listener;
             this.postUrl = postUrl;
             this.userAccessKey = userAccessKey;
-            this.instanceNum = instanceNum;
         }
 
-        @Override public Boolean invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+        @Override
+        public Boolean invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
 
             File file = new File(this.filePath);
             if (!file.isAbsolute()) {
@@ -385,25 +402,27 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
             }
 
             HttpEntity entity = MultipartEntityBuilder
-                .create()
-                .addTextBody("payload", this.payload)
-                .addBinaryBody("file", file, ContentType.create("application/octet-stream"), "filename")
-                .build();
+                    .create()
+                    .addTextBody("payload", this.payload)
+                    .addBinaryBody("file", file, ContentType.create("application/octet-stream"), "filename")
+                    .build();
 
             boolean success = false;
             try {
-                success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey, instanceNum);
+                success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey);
             } catch (Exception ex) {
                 listener.error("Error uploading metric file : " + ex.getClass() + " - " + ex.getMessage());
                 listener.error("Stack trace : ");
                 StackTraceElement[] elements = ex.getStackTrace();
                 for (int i = 0; i < elements.length; i++) {
                     StackTraceElement s = elements[i];
-                    listener.error("\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
+                    listener.error("\tat " + s.getClassName() + "." + s.getMethodName() + "(" + s.getFileName() + ":"
+                            + s.getLineNumber() + ")");
                 }
             }
             return success;
         }
+
         /**
          * Check the role of the executing node to follow jenkins new file access rules
          */
@@ -411,12 +430,5 @@ public class UploadMetricsFile extends Builder implements SimpleBuildStep {
         public void checkRoles(RoleChecker checker) throws SecurityException {
             // no-op
         }
-    }
-
-    private String removeTrailingSlash(String url) {
-        if (url.endsWith("/")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
     }
 }

@@ -34,13 +34,17 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 @Extension
 public class CloudItemListener extends ItemListener {
     public static final Logger log = LoggerFactory.getLogger(CloudItemListener.class);
-    private String logPrefix= "[UrbanCode Velocity] CloudItemListener#";
+    public static final List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+            .getEntries();
+    private String logPrefix = "[UrbanCode Velocity] CloudItemListener#";
 
-    public CloudItemListener(){
-        logPrefix= logPrefix + "CloudItemListener ";
-        //if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+    public CloudItemListener() {
+        logPrefix = logPrefix + "CloudItemListener ";
+        // if
+        // (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured())
+        // {
         log.info(logPrefix + "CloudItemListener started...");
-        //}
+        // }
     }
 
     @Override
@@ -59,32 +63,30 @@ public class CloudItemListener extends ItemListener {
     }
 
     private void handleEvent(Item item, String phase) {
-        
-        if( !(item instanceof Folder) ) {
-            JenkinsJob jenkinsJob= new JenkinsJob(item);
+
+        if (!(item instanceof Folder)) {
+            JenkinsJob jenkinsJob = new JenkinsJob(item);
             log.info(ToStringBuilder.reflectionToString(jenkinsJob.toJson()) + " was " + phase);
-            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-            for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
-                if (entries.get(instanceNum).isConfigured()) {
-                    CloudPublisher.uploadJobInfo(jenkinsJob.toJson(), instanceNum);
+            for (Entry entry : entries) {
+                if (entry.isConfigured()) {
+                    CloudPublisher.uploadJobInfo(jenkinsJob.toJson(), entry);
                 }
-            } 
-        } 
+            }
+        }
     }
 
     public List<JSONObject> buildJobsList() {
-        List<Item> allProjects= JenkinsServer.getAllItems();
+        List<Item> allProjects = JenkinsServer.getAllItems();
         List<JSONObject> allJobs = new ArrayList<JSONObject>();
 
         log.info(logPrefix + "\n\n\tBuilding the list of Jenkins jobs...\n\n");
         for (Item anItem : allProjects) {
-            if( !(anItem instanceof Folder) ) {
-                JenkinsJob jenkinsJob= new JenkinsJob(anItem);
+            if (!(anItem instanceof Folder)) {
+                JenkinsJob jenkinsJob = new JenkinsJob(anItem);
                 allJobs.add(jenkinsJob.toJson());
-                List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-                for (int instanceNum = 0; instanceNum < entries.size(); instanceNum++) {
-                    if (entries.get(instanceNum).isConfigured()) {
-                        CloudPublisher.uploadJobInfo(jenkinsJob.toJson(), instanceNum);
+                for (Entry entry : entries) {
+                    if (entry.isConfigured()) {
+                        CloudPublisher.uploadJobInfo(jenkinsJob.toJson(), entry);
                     }
                 }
             }

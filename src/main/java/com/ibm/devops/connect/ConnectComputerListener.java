@@ -23,54 +23,53 @@ import java.util.List;
 
 @Extension
 public class ConnectComputerListener extends ComputerListener {
-	public static final Logger log = LoggerFactory.getLogger(ConnectComputerListener.class);
+    public static final Logger log = LoggerFactory.getLogger(ConnectComputerListener.class);
 
     private static CloudSocketComponent cloudSocketInstance;
     private static ReconnectExecutor reconnectExecutor;
 
-    public static boolean isRabbitConnected(int instanceNum){
-        return cloudSocketInstance.isAMQPConnected(instanceNum);
+    public static boolean isRabbitConnected(Entry entry) {
+        return cloudSocketInstance.isAMQPConnected(entry);
     }
 
-    private static void setCloudSocketComponent( CloudSocketComponent comp ) {
+    private static void setCloudSocketComponent(CloudSocketComponent comp) {
         cloudSocketInstance = comp;
     }
 
     @Override
     public void onOnline(Computer c) {
         List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
-        int instanceNum = 0;
         for (Entry entry : entries) {
-            if ( c instanceof jenkins.model.Jenkins.MasterComputer && entry.isConfigured()) {
-                String url = getConnectUrl(instanceNum);
-    
+            if (c instanceof jenkins.model.Jenkins.MasterComputer && entry.isConfigured()) {
+                String url = getConnectUrl(entry);
+                String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl()
+                        + "] ConnectComputerListener#onOnline - ";
                 CloudWorkListener listener = new CloudWorkListener();
-    
+
                 ConnectComputerListener.setCloudSocketComponent(new CloudSocketComponent(listener, url));
-    
+
                 try {
-                    log.info("[UrbanCode Velocity "+ entry.getBaseUrl() + "] ConnectComputerListener#onOnline - Connecting to Cloud Services...");
-                    getCloudSocketInstance().connectToCloudServices(instanceNum);
+                    log.info(logPrefix + "Connecting to Cloud Services...");
+                    getCloudSocketInstance().connectToCloudServices(entry);
                 } catch (Exception e) {
-                    log.error("[UrbanCode Velocity "+ entry.getBaseUrl() + "] ConnectComputerListener#onOnline - Exception caught while connecting to Cloud Services: " + e);
+                    log.error(logPrefix + "Exception caught while connecting to Cloud Services: " + e);
                     e.printStackTrace();
                 }
-    
+
                 // Synchronized to protect lazy initalization of static variable
-                synchronized(this) {
-                    if(reconnectExecutor == null) {
+                synchronized (this) {
+                    if (reconnectExecutor == null) {
                         reconnectExecutor = new ReconnectExecutor(cloudSocketInstance);
                         reconnectExecutor.startReconnectExecutor();
                     }
                 }
             }
-            instanceNum =instanceNum + 1;
         }
     }
 
-    private String getConnectUrl(int i) {
+    private String getConnectUrl(Entry entry) {
         EndpointManager em = new EndpointManager();
-        return em.getConnectEndpoint(i);
+        return em.getConnectEndpoint(entry);
     }
 
     public CloudSocketComponent getCloudSocketInstance() {

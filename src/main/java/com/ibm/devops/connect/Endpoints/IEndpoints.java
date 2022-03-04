@@ -1,26 +1,28 @@
 package com.ibm.devops.connect.Endpoints;
 
+import com.ibm.devops.connect.Entry;
+
 public interface IEndpoints {
 
-    public String getSyncApiEndpoint(int instanceNum);
+    public String getSyncApiEndpoint(Entry entry);
 
-    public String getGraphqlApiEndpoint(int instanceNum);
+    public String getGraphqlApiEndpoint(Entry entry);
 
-    public String getPipelinesEndpoint(int instanceNum);
+    public String getPipelinesEndpoint(Entry entry);
 
     public String getSyncApiEndpoint(String baseUrl);
 
-    public String getSyncStoreEndpoint(int instanceNum);
+    public String getSyncStoreEndpoint(Entry entry);
 
-    public String getConnectEndpoint(int instanceNum);
+    public String getConnectEndpoint(Entry entry);
 
-    public String getQualityDataEndpoint(int instanceNum);
+    public String getQualityDataEndpoint(Entry entry);
 
-    public String getQualityDataRawEndpoint(int instanceNum);
+    public String getQualityDataRawEndpoint(Entry entry);
 
-    public String getVelocityHostname(int instanceNum);
+    public String getVelocityHostname(Entry entry);
 
-    public String getReleaseEvensApiEndpoint(int instanceNum);
+    public String getReleaseEvensApiEndpoint(Entry entry);
 
-    public String getDotsEndpoint(int instanceNum);
+    public String getDotsEndpoint(Entry entry);
 }

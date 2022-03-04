@@ -39,7 +39,8 @@ public class JenkinsJobStatus extends AbstractJenkinsStatus {
 
     public static final Logger log = LoggerFactory.getLogger(JenkinsJobStatus.class);
 
-    public JenkinsJobStatus(Run run, CloudCause cloudCause, BuildStep buildStep, TaskListener taskListener, Boolean newStep, Boolean isFatal) {
+    public JenkinsJobStatus(Run run, CloudCause cloudCause, BuildStep buildStep, TaskListener taskListener,
+            Boolean newStep, Boolean isFatal) {
         this.run = run;
         this.cloudCause = cloudCause;
         this.buildStep = buildStep;
@@ -56,16 +57,16 @@ public class JenkinsJobStatus extends AbstractJenkinsStatus {
     protected FilePath getWorkspaceFilePath() {
         // run.getBuild
         if (run instanceof AbstractBuild) {
-            return ((AbstractBuild)run).getWorkspace();
+            return ((AbstractBuild) run).getWorkspace();
         }
         return null;
     }
 
-
     protected void evaluateBuildStep() {
-        if(!(buildStep instanceof hudson.model.ParametersDefinitionProperty)) {
+        if (!(buildStep instanceof hudson.model.ParametersDefinitionProperty)) {
             if (newStep && buildStep != null) {
-                cloudCause.addStep(((Describable)buildStep).getDescriptor().getDisplayName(), JobStatus.started.toString(), "Started a build step", false);
+                cloudCause.addStep(((Describable) buildStep).getDescriptor().getDisplayName(),
+                        JobStatus.started.toString(), "Started a build step", false);
             } else if (buildStep != null) {
                 String newStatus;
                 String message;
@@ -78,7 +79,8 @@ public class JenkinsJobStatus extends AbstractJenkinsStatus {
                 }
 
                 if (cloudCause.isCreatedByCR()) {
-                    cloudCause.updateLastStep(((Describable)buildStep).getDescriptor().getDisplayName(), newStatus, message, isFatal);
+                    cloudCause.updateLastStep(((Describable) buildStep).getDescriptor().getDisplayName(), newStatus,
+                            message, isFatal);
                 }
             }
         }

@@ -7,7 +7,7 @@ import jenkins.model.Jenkins;
 import java.util.List;
 
 public class JenkinsIntegrationId {
-    public JenkinsIntegrationId () {
+    public JenkinsIntegrationId() {
 
     }
 
