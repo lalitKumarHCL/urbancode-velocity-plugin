@@ -208,9 +208,9 @@ public class CloudSocketComponent {
                         String encodedString = getEncodedString(plainCredentials);
                         String authorizationHeader = "Basic " + encodedString;
                         String rootUrl = Jenkins.getInstance().getRootUrl();
-                        log.info("Root Url: ", rootUrl);
+                        log.info("Root Url: " + rootUrl);
                         String path = "job/"+jobName.replaceAll("/", "/job/")+"/api/json";
-                        log.info("Path: ", path);
+                        log.info("Path: " + path);
                         String finalUrl = null;
                         String buildDetails = null;
                         try {
@@ -218,7 +218,7 @@ public class CloudSocketComponent {
                             builder.setPath(builder.getPath()+path); 
                             builder.setParameter("fetchAllbuildDetails", "True");
                             finalUrl = builder.toString();
-                            log.info("Final Url: ", finalUrl);
+                            log.info("Final Url: " + finalUrl);
                         } catch (Exception e) {
                             log.error("Caught error while building url to get details of previous builds: ", e);
                         }
