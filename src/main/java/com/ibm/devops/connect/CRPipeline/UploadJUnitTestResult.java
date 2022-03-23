@@ -20,8 +20,8 @@ import hudson.model.TaskListener;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
 
+import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +38,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.entity.ContentType;
 
 import com.ibm.devops.connect.CloudPublisher;
+import com.ibm.devops.connect.DevOpsGlobalConfiguration;
 
 public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
 
@@ -54,11 +55,17 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
 
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
-            throws AbortException, InterruptedException, IOException {
+    throws AbortException, InterruptedException, IOException {
+        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+            listener.getLogger().println("Could not upload junit tests to Velocity as there is no configuration specified.");
+            return;
+        }
 
         Object fatalFailure = this.properties.get("fatal");
+        String buildUrl = Jenkins.getInstance().getRootUrl() + build.getUrl();
+        String userAccessKey = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getApiToken();
 
-        boolean success = workspace.act(new FileUploader(this.properties, listener));
+        boolean success = workspace.act(new FileUploader(this.properties, listener, buildUrl, CloudPublisher.getQualityDataUrl(), userAccessKey));
         if (!success) {
             if (fatalFailure != null && fatalFailure.toString().equals("true")) {
                 build.setResult(Result.FAILURE);
@@ -76,11 +83,6 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
         }
 
         @Override
-        public String getHelpFile() {
-            return "/plugin/ibm-ucdeploy-build-steps/publish.html";
-        }
-
-        @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             req.bindJSON(this, formData);
             save();
@@ -94,7 +96,7 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
          */
         @Override
         public String getDisplayName() {
-            return "Pass Properties to Continuous Release Version";
+            return "UCV - Upload JUnit Results to UrbanCode Velocity";
         }
 
         @Override
@@ -106,14 +108,20 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
     private static final class FileUploader implements FileCallable<Boolean> {
         private Map<String, String> properties;
         private TaskListener listener;
+        private String buildUrl;
+        private String postUrl;
+        private String userAccessKey;
 
-        public FileUploader(Map<String, String> properties, TaskListener listener) {
+        public FileUploader(Map<String, String> properties, TaskListener listener, String buildUrl, String postUrl, String userAccessKey) {
             this.properties = properties;
             this.listener = listener;
+            this.buildUrl = buildUrl;
+            this.postUrl = postUrl;
+            this.userAccessKey = userAccessKey;
         }
 
         @Override public Boolean invoke(File f, VirtualChannel channel) {
-            listener.getLogger().println("Uploading JUnint File");
+            listener.getLogger().println("Uploading JUnit File");
 
             String filePath = properties.get("filePath");
             String tenantId = properties.get("tenant_id");
@@ -122,43 +130,55 @@ public class UploadJUnitTestResult extends Builder implements SimpleBuildStep {
             String appId = properties.get("appId");
             String appExtId = properties.get("appExtId");
             String appName = properties.get("appName");
+            String environment = properties.get("environment");
             Object combineTestSuites = properties.get("combineTestSuites");
+            String metricDefinitionId = properties.get("metricDefinitionId");
+            String buildId = properties.get("buildId");
 
             JSONObject payload = new JSONObject();
-            JSONObject data = new JSONObject();
             JSONObject application = new JSONObject();
+            JSONObject record = new JSONObject();
+            JSONObject options = new JSONObject();
 
             application.put("id", appId);
             application.put("name", appName);
             application.put("externalId", appExtId);
 
-            payload.put("type", "junitXML");
-            payload.put("dataFormat", "xml");
-            payload.put("environment", "Prod");
-            payload.put("authToken", "12345");
-            payload.put("application", application);
+            record.put("pluginType", "junitXML");
+            record.put("dataFormat", "xml");
+            record.put("recordName", name);
+            record.put("metricDefinitionId", metricDefinitionId);
 
-            data.put("tenant_id", tenantId);
-            data.put("name", name);
-            data.put("testSetName", testSetName);
-            data.put("enricherType", "JUnit Quality Data");
-            data.put("category", "Unit Tests");
             if (combineTestSuites != null) {
-                data.put("combineTestSuites", combineTestSuites.toString());
+                options.put("combineTestSuites", combineTestSuites.toString());
             }
 
-            payload.put("data", data);
+            payload.put("dataSet", testSetName);
+            payload.put("environment", environment);
+            payload.put("tenantId", tenantId);
+
+            payload.put("application", application);
+            payload.put("record", record);
+            payload.put("options", options);
+
+            JSONObject build = new JSONObject();
+            if (buildId != null) {
+                build.put("id", buildId);
+            }
+            build.put("url", this.buildUrl);
+            payload.put("build", build);
+
+            System.out.println("TEST payload: " + payload.toString(2));
 
             HttpEntity entity = MultipartEntityBuilder
                 .create()
                 .addTextBody("payload", payload.toString())
-                .addBinaryBody("testArtifact", new File(f, filePath), ContentType.create("application/octet-stream"), "filename")
+                .addBinaryBody("file", new File(f, filePath), ContentType.create("application/octet-stream"), "filename")
                 .build();
 
-            CloudPublisher cloudPublisher = new CloudPublisher();
             boolean success = false;
             try {
-                success = cloudPublisher.uploadQualityData(entity);
+                success = CloudPublisher.uploadQualityData(entity, postUrl, userAccessKey);
             } catch (Exception ex) {
                 listener.error("Error uploading quality data: " + ex.getClass() + " - " + ex.getMessage());
             }

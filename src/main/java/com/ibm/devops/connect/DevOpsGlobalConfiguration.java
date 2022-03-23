@@ -18,17 +18,13 @@ import java.util.List;
 
 import hudson.CopyOnWrite;
 import hudson.Extension;
-import hudson.model.Computer;
 import hudson.util.ListBoxModel;
 import hudson.util.FormValidation;
 import jenkins.model.GlobalConfiguration;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
+import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.AncestorInPath;
-import com.ibm.devops.connect.CloudSocketComponent;
-import com.ibm.devops.connect.ConnectComputerListener;
 
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
@@ -39,10 +35,6 @@ import com.cloudbees.plugins.credentials.domains.URIRequirementBuilder;
 import hudson.security.ACL;
 import jenkins.model.Jenkins;
 
-import java.io.IOException;
-import javax.servlet.ServletException;
-
-import com.ibm.devops.connect.CloudPublisher;
 /**
  * Created by lix on 7/20/17.
  */
@@ -55,6 +47,8 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
     private volatile String baseUrl;
     private String credentialsId;
     private String rabbitMQPort;
+    private String rabbitMQHost;
+    private String apiToken;
 
     public DevOpsGlobalConfiguration() {
         load();
@@ -75,6 +69,15 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
 
     public void setSyncToken(String syncToken) {
         this.syncToken = syncToken;
+        save();
+    }
+
+    public String getApiToken() {
+        return apiToken;
+    }
+
+    public void setApiToken(String apiToken) {
+        this.apiToken = apiToken;
         save();
     }
 
@@ -100,8 +103,17 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         return rabbitMQPort;
     }
 
+    public String getRabbitMQHost() {
+        return rabbitMQHost;
+    }
+
     public void setRabbitMQPort(String rabbitMQPort) {
         this.rabbitMQPort = rabbitMQPort;
+        save();
+    }
+
+    public void setRabbitMQHost(String rabbitMQHost) {
+        this.rabbitMQHost = rabbitMQHost;
         save();
     }
 
@@ -112,7 +124,10 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         syncId = formData.getString("syncId");
         syncToken = formData.getString("syncToken");
         baseUrl = formData.getString("baseUrl");
-       credentialsId = formData.getString("credentialsId");
+        credentialsId = formData.getString("credentialsId");
+        rabbitMQPort = formData.getString("rabbitMQPort");
+        rabbitMQHost = formData.getString("rabbitMQHost");
+        apiToken = formData.getString("apiToken");
         save();
 
         reconnectCloudSocket();
@@ -131,11 +146,16 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         @QueryParameter("baseUrl") final String baseUrl)
     throws FormException {
         try {
-            CloudPublisher cloudPublisher = new CloudPublisher();
-
-            boolean connected = cloudPublisher.testConnection(syncId, syncToken, baseUrl);
+            boolean connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl);
             if (connected) {
-                return FormValidation.ok("Successful Connection to Velocity Services");
+                boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
+
+                String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV.";
+                if(amqpConnected) {
+                    rabbitMessage = "Connected to RabbitMQ successfully. Ready to run Jenkins jobs from UCV.";
+                }
+
+                return FormValidation.ok("Successful connection to Velocity Services.\n" + rabbitMessage);
             } else {
                 return FormValidation.error("Could not connect to Velocity.  Please check your URL and credentials provided.");
             }
@@ -176,6 +196,14 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
     private void reconnectCloudSocket() {
         ConnectComputerListener connectComputerListener = new ConnectComputerListener();
 
-        connectComputerListener.onOnline(Computer.currentComputer());
+        connectComputerListener.onOnline(Jenkins.getInstance().toComputer());
+    }
+
+    public boolean isConfigured() {
+        return StringUtils.isNotEmpty(this.syncId) &&
+               StringUtils.isNotEmpty(this.syncToken) &&
+               StringUtils.isNotEmpty(this.baseUrl) &&
+               StringUtils.isNotEmpty(this.credentialsId) &&
+               StringUtils.isNotEmpty(this.apiToken);
     }
 }

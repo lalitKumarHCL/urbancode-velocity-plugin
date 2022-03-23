@@ -71,7 +71,7 @@ import com.ibm.devops.connect.Status.JenkinsJobStatus;
  */
 public class CloudWorkListener implements IWorkListener {
 	public static final Logger log = LoggerFactory.getLogger(CloudWorkListener.class);
-    private String logPrefix= "[IBM Cloud DevOps] CloudWorkListener#";
+    private String logPrefix= "[UrbanCode Velocity] CloudWorkListener#";
 
     public CloudWorkListener() {
 
@@ -170,8 +170,7 @@ public class CloudWorkListener implements IWorkListener {
                 if( errorMessage != null ) {
                     JenkinsJobStatus erroredJobStatus = new JenkinsJobStatus(null, cloudCause, null, null, true, true);
                     JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage);
-                    CloudPublisher cloudPublisher = new CloudPublisher();
-                    cloudPublisher.uploadJobStatus(statusUpdate);
+                    CloudPublisher.uploadJobStatus(statusUpdate);
 
                     workStatus = WorkStatus.failed;
                 }

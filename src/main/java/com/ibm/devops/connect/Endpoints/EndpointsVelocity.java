@@ -7,21 +7,30 @@ import java.net.URL;
 import java.net.MalformedURLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.servlet.mvc.UrlFilenameViewController;
 
 public class EndpointsVelocity implements IEndpoints {
-    private String logPrefix = "[EndpointsVelocity]";
-	private static final Logger log = LoggerFactory.getLogger(EndpointsVelocity.class);
+    private String logPrefix = "[EndpointsVelocity] EndpointsVelocity#";
+    private static final Logger log = LoggerFactory.getLogger(EndpointsVelocity.class);
 
-    private static final String SYNC_API_ENPOINT = "http://192.168.1.6:8071/";
-    private static final String AMQP_ENPOINT = "https://velocity.us-south.containers.mybluemix.net/sync/";
     private static final String SYNC_STORE_ENPOINT = "https://bogus/";
     private static final String CONNECT_ENPOINT = "https://bogus";
     private static final String REPORTING_SYNC_PATH = "/reporting-sync-api/";
-    private static final String QUALITY_DATA_PATH = "/reporting-consumer/qualityData";
+    private static final String QUALITY_DATA_PATH = "/api/v1/metrics/upload";
+    private static final String QUALITY_DATA_RAW_PATH = "/api/v1/metrics";
+    private static final String RELEASE_EVENTS_API_PATH = "/release-events-api/";
+    private static final String DOTS_PATH = "/api/v1/dots";
+    private static final String PIPELINES_PATH = "/pipelines/";
+
+    public String getReleaseEvensApiEndpoint() {
+        return getBaseUrl() + RELEASE_EVENTS_API_PATH;
+    }
 
     public String getSyncApiEndpoint() {
         return getBaseUrl() + REPORTING_SYNC_PATH;
+    }
+
+    public String getDotsEndpoint() {
+        return getBaseUrl() + DOTS_PATH;
     }
 
     public String getSyncApiEndpoint(String baseUrl) {
@@ -29,8 +38,16 @@ public class EndpointsVelocity implements IEndpoints {
         return baseUrl + REPORTING_SYNC_PATH;
     }
 
+    public String getPipelinesEndpoint() {
+        return getBaseUrl() + PIPELINES_PATH;
+    }
+
     public String getQualityDataEndpoint() {
         return getBaseUrl() + QUALITY_DATA_PATH;
+    }
+
+    public String getQualityDataRawEndpoint() {
+        return getBaseUrl() + QUALITY_DATA_RAW_PATH;
     }
 
     public String getSyncStoreEndpoint() {

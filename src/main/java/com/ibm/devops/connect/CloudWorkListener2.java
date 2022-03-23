@@ -67,6 +67,9 @@ import java.security.MessageDigest;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.Cipher;
 
+import org.acegisecurity.userdetails.UsernameNotFoundException;
+import com.ibm.devops.connect.SecuredActions.AbstractSecuredAction;
+
 /*
  * When Spring is applying the @Transactional annotation, it creates a proxy class which wraps your class.
  * So when your bean is created in your application context, you are getting an object that is not of type
@@ -75,7 +78,7 @@ import javax.crypto.Cipher;
  */
 public class CloudWorkListener2 {
 	public static final Logger log = LoggerFactory.getLogger(CloudWorkListener2.class);
-    private String logPrefix= "[IBM Cloud DevOps] CloudWorkListener2#";
+    private String logPrefix= "[UrbanCode Velocity] CloudWorkListener2#";
 
     public CloudWorkListener2() {
 
@@ -115,7 +118,7 @@ public class CloudWorkListener2 {
         return new String(clearbyte, "UTF-8");
     }
 
-    public void callSecured(ConnectSocket socket, String event, Object... args) {
+    public void callSecured(ConnectSocket socket, String event, String securityError, Object... args) {
         log.info(logPrefix + " Received event from Connect Socket");
 
         String payload = args[0].toString();
@@ -190,7 +193,15 @@ public class CloudWorkListener2 {
                         errorMessage = "Could not start pipeline build.";
                     }
                 } else if (item == null) {
-                    errorMessage = "No Item Found";
+                    if(securityError != null) {
+                        if(securityError.equals(AbstractSecuredAction.NO_CREDENTIALS_PROVIDED)) {
+                            errorMessage = "No Item Found. No Jenkins credentials were provided in Velocity config on Jenkins 'Configure System' page.  Credentials may be required.";
+                        } else {
+                            errorMessage = securityError;
+                        }
+                    } else {
+                        errorMessage = "No Item Found";
+                    }
                     log.warn(errorMessage);
                 } else {
                     errorMessage = "Unhandled job type found: " + item.getClass();
@@ -200,8 +211,7 @@ public class CloudWorkListener2 {
                 if( errorMessage != null ) {
                     JenkinsJobStatus erroredJobStatus = new JenkinsJobStatus(null, cloudCause, null, null, true, true);
                     JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage);
-                    CloudPublisher cloudPublisher = new CloudPublisher();
-                    cloudPublisher.uploadJobStatus(statusUpdate);
+                    CloudPublisher.uploadJobStatus(statusUpdate);
                 }
 
             }

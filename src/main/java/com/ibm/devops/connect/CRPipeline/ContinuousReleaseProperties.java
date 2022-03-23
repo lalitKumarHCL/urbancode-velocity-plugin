@@ -79,11 +79,6 @@ public class ContinuousReleaseProperties extends Builder implements SimpleBuildS
         }
 
         @Override
-        public String getHelpFile() {
-            return "/plugin/ibm-ucdeploy-build-steps/publish.html";
-        }
-
-        @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             req.bindJSON(this, formData);
             save();
@@ -97,7 +92,7 @@ public class ContinuousReleaseProperties extends Builder implements SimpleBuildS
          */
         @Override
         public String getDisplayName() {
-            return "Pass Properties to Continuous Release Version";
+            return "Pass Properties to UrbanCode Velocity Version";
         }
 
         @Override

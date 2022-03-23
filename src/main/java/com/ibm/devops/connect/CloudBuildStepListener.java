@@ -14,32 +14,21 @@
 
 package com.ibm.devops.connect;
 
-import java.util.Map;
-
-import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.model.BuildStepListener;
 import hudson.tasks.BuildStep;
 import hudson.model.AbstractBuild;
-import hudson.tasks.Builder;
-import hudson.model.Result;
 
 import jenkins.model.Jenkins;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.HashSet;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.sf.json.JSONObject;
-import net.sf.json.JSONArray;
 
-import com.ibm.devops.connect.CloudCause.JobStatus;
 import com.ibm.devops.connect.Status.JenkinsJobStatus;
 
 @Extension
@@ -47,24 +36,23 @@ public class CloudBuildStepListener extends BuildStepListener {
     public static final Logger log = LoggerFactory.getLogger(CloudBuildStepListener.class);
 
     public void finished(AbstractBuild build, BuildStep bs, BuildListener listener, boolean canContinue) {
-
-        CloudCause cloudCause = getCloudCause(build);
-        if (cloudCause == null) {
-            cloudCause = new CloudCause();
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+            CloudCause cloudCause = getCloudCause(build);
+            if (cloudCause == null) {
+                cloudCause = new CloudCause();
+            }
+            JenkinsJobStatus status = new JenkinsJobStatus(build, cloudCause, bs, listener, false, !canContinue);
+            JSONObject statusUpdate = status.generate(false);
+            CloudPublisher.uploadJobStatus(statusUpdate);
         }
-        JenkinsJobStatus status = new JenkinsJobStatus(build, cloudCause, bs, listener, false, !canContinue);
-        JSONObject statusUpdate = status.generate(false);
-        CloudPublisher cloudPublisher = new CloudPublisher();
-        cloudPublisher.uploadJobStatus(statusUpdate);
     }
 
     public void started(AbstractBuild build, BuildStep bs, BuildListener listener) {
-        // We listen to jobs that are started by IBM Cloud only
-        if(this.shouldListen(build)) {
+        // We listen to jobs that are started by UrbanCode Velocity only
+        if(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured() && this.shouldListen(build)) {
             JenkinsJobStatus status = new JenkinsJobStatus(build, getCloudCause(build), bs, listener, true, false);
             JSONObject statusUpdate = status.generate(false);
-            CloudPublisher cloudPublisher = new CloudPublisher();
-            cloudPublisher.uploadJobStatus(statusUpdate);
+            CloudPublisher.uploadJobStatus(statusUpdate);
         }
     }
 

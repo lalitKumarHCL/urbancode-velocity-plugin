@@ -8,8 +8,8 @@
  *******************************************************************************/
 package com.ibm.devops.connect;
 
-import java.net.URI;
-import java.util.Properties;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 import jenkins.model.Jenkins;
 
@@ -17,16 +17,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ibm.devops.connect.DevOpsGlobalConfiguration;
-
-import com.ibm.cloud.urbancode.connect.client.ConnectSocket;
-import com.ibm.cloud.urbancode.connect.client.Listeners;
-import com.ibm.devops.connect.OnConnectListener;
-
-import com.ibm.devops.connect.CloudPublisher;
-
-import io.socket.client.Socket;
 import com.ibm.devops.connect.SecuredActions.BuildJobsList;
+import com.ibm.devops.connect.SecuredActions.BuildJobsList.BuildJobListParamObj;
 
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Connection;
@@ -35,17 +27,31 @@ import com.rabbitmq.client.*;
 import java.io.IOException;
 import com.ibm.devops.connect.Endpoints.EndpointManager;
 
-import java.net.MalformedURLException;
+
+import java.security.MessageDigest;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.Cipher;
+import net.sf.json.*;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+import org.apache.http.client.utils.URIBuilder;
+
 
 public class CloudSocketComponent {
 
     public static final Logger log = LoggerFactory.getLogger(CloudSocketComponent.class);
-    private String logPrefix= "[IBM Cloud DevOps] CloudSocketComponent#";
+    private String logPrefix= "[UrbanCode Velocity] CloudSocketComponent#";
 
     final private IWorkListener workListener;
     final private String cloudUrl;
-    private ConnectSocket socket;
 
+    private static Connection conn;
+
+    private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
 
     // private static void setOtherIntegrationsExists(boolean exists) {
@@ -62,43 +68,109 @@ public class CloudSocketComponent {
     }
 
     public String getSyncId() {
-    	return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncId();
+        return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncId();
     }
 
     public String getSyncToken() {
-    	return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken();
+        return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken();
     }
 
     public void connectToCloudServices() throws Exception {
-    	logPrefix= logPrefix + "connectToCloudServices ";
+        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+            logPrefix= logPrefix + "connectToCloudServices ";
+
+            connectToAMQP();
+
+            log.info(logPrefix + "Assembling list of Jenkins Jobs...");
+
+            BuildJobsList buildJobList = new BuildJobsList();
+            BuildJobListParamObj paramObj = buildJobList.new BuildJobListParamObj();
+            buildJobList.runAsJenkinsUser(paramObj);
+        }
+    }
+
+    public static boolean isAMQPConnected() {
+        if (conn == null || queueIsAvailable == false) {
+            return false;
+        }
+        return conn.isOpen();
+    }
+    
+    private static byte[] toByte(String hexString) {
+        int len = hexString.length()/2;
+        byte[] result = new byte[len];
+        for (int i = 0; i < len; i++) {
+            result[i] = Integer.valueOf(hexString.substring(2*i, 2*i+2), 16).byteValue();
+        }
+        return result;
+    }
+
+    private static String decrypt(String seed, String encrypted) throws Exception {
+        byte[] keyb = seed.getBytes("UTF-8");
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] thedigest = md.digest(keyb);
+        SecretKeySpec skey = new SecretKeySpec(thedigest, "AES");
+        Cipher dcipher = Cipher.getInstance("AES");
+        dcipher.init(Cipher.DECRYPT_MODE, skey);
+        byte[] clearbyte = dcipher.doFinal(toByte(encrypted));
+        return new String(clearbyte, "UTF-8");
+    }
+
+    private static String getEncodedString(String credentials){  
+        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));   
+    }
+
+    public void connectToAMQP() throws Exception {
+        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+            return;
+        }
+
         String syncId = getSyncId();
 
-        boolean shouldConnect = true;
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setAutomaticRecoveryEnabled(false);
 
-        if(shouldConnect) {
-            ConnectionFactory factory = new ConnectionFactory();
-            EndpointManager em = new EndpointManager();
+        EndpointManager em = new EndpointManager();
 
-            // Public Jenkins Client Credentials
-            factory.setUsername("jenkins");
-            factory.setPassword("jenkins");
-            String hostname = em.getVelocityHostname();
-            factory.setHost(hostname);
+        // Public Jenkins Client Credentials
+        factory.setUsername("jenkins");
+        factory.setPassword("jenkins");
 
-            int port = 5672;
-            String rabbitPort = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getRabbitMQPort();
-
-            if (rabbitPort != null && !rabbitPort.equals("")) {
-                try {
-                    port = Integer.parseInt(rabbitPort);
-                } catch (NumberFormatException nfe) {
-                    log.warn("Provided Rabbit MQ port is not an integer.  Using default 5672");
+        String host = em.getVelocityHostname();
+        String rabbitHost = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getRabbitMQHost();
+        if (rabbitHost != null && !rabbitHost.equals("")) {
+            try {
+                if (rabbitHost.endsWith("/")) {
+                    rabbitHost = rabbitHost.substring(0, rabbitHost.length() - 1);
                 }
+                URL urlObj = new URL(rabbitHost);
+                host = urlObj.getHost();
+            } catch (MalformedURLException e) {
+                log.warn("Provided Rabbit MQ Host is not a valid hostname. Using default : " + host, e);
+            }
+        }
+        factory.setHost(host);
+
+        int port = 5672;
+        String rabbitPort = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getRabbitMQPort();
+
+        if (rabbitPort != null && !rabbitPort.equals("")) {
+            try {
+                port = Integer.parseInt(rabbitPort);
+            } catch (NumberFormatException nfe) {
+                log.warn("Provided Rabbit MQ port is not an integer.  Using default 5672");
+            }
+        }
+        factory.setPort(port);
+
+        // Synchronized to protect manipulation of static variable
+        synchronized (this) {
+
+            if(this.conn != null && this.conn.isOpen()) {
+                this.conn.abort();
             }
 
-            factory.setPort(port);
-
-            Connection conn = factory.newConnection();
+            conn = factory.newConnection();
 
             Channel channel = conn.createChannel();
 
@@ -113,12 +185,10 @@ public class CloudSocketComponent {
                                             AMQP.BasicProperties properties, byte[] body) throws IOException {
 
                     if (envelope.getRoutingKey().contains(".heartbeat")) {
-                        CloudPublisher cloudPublisher = new CloudPublisher();
                         String syncId = getSyncId();
                         String syncToken = getSyncToken();
-                        
+
                         String url = removeTrailingSlash(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getBaseUrl());
-<<<<<<< Updated upstream
                         boolean connected = cloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
                         String message = new String(body, "UTF-8");
@@ -126,7 +196,6 @@ public class CloudSocketComponent {
 
                         CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
                         cloudWorkListener.call("startJob", message);
-=======
                         CloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
                         String message = new String(body, "UTF-8");
@@ -213,48 +282,35 @@ public class CloudSocketComponent {
                                 cloudWorkListener.call("startJob", message);   
                             }    
                         }
->>>>>>> Stashed changes
                     }
                 }
             };
 
-            channel.basicConsume(queueName, true, consumer);
-
-            log.info(logPrefix + "\n\n\tAbout to attempt building list...\n\n");
-
-            BuildJobsList buildJobList = new BuildJobsList();
-            buildJobList.runAsJenkinsUser(null);
+            if (checkQueueAvailability(channel, queueName)) {
+                channel.basicConsume(queueName, true, consumer);
+            }else{
+                log.info("Queue is not yet available, will attempt to reconect shortly...");
+                queueIsAvailable = false;
+            }
         }
     }
+
+    public static boolean checkQueueAvailability(Channel channel, String queueName) throws IOException {
+        try {
+          channel.queueDeclarePassive(queueName);
+          queueIsAvailable = true;
+          return true;
+        } catch (IOException e) {
+            log.error("Checking Queue availability threw exception: ", e);
+        }
+        return false;
+      }
 
     private String removeTrailingSlash(String url) {
         if (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
         return url;
-    }
-
-    // this does get called, but you may not see logging in the console. it will appear in the file.
-    public void disconnect() {
-        if (socket != null) {
-            try {
-                socket.disconnect();
-                log.info(logPrefix + "Disconnected from the cloud service");
-            }
-            catch (Exception e) {
-                log.error(logPrefix + "Error disconnecting the cloud service gracefully", e);
-            }
-            finally {
-                socket = null;
-            }
-        }
-    }
-
-    public boolean connected() {
-        if(socket == null) {
-            return false;
-        }
-        return socket.connected();
     }
 
     public String getCauseOfFailure() {
