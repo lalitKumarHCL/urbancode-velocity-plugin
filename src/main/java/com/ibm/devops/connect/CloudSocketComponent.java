@@ -189,13 +189,6 @@ public class CloudSocketComponent {
                         String syncToken = getSyncToken();
 
                         String url = removeTrailingSlash(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getBaseUrl());
-                        boolean connected = cloudPublisher.testConnection(syncId, syncToken, url);
-                    } else {
-                        String message = new String(body, "UTF-8");
-                        System.out.println(" [x] Received '" + message + "'");
-
-                        CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
-                        cloudWorkListener.call("startJob", message);
                         CloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
                         String message = new String(body, "UTF-8");
