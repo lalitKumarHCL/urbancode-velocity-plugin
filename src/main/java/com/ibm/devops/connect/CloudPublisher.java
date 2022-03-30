@@ -172,9 +172,9 @@ public class CloudPublisher  {
         JSONArray payload = new JSONArray();
         payload.add(jobJson);
 
-        System.out.println("SENDING JOBS TO: ");
-        System.out.println(url);
-        System.out.println(jobJson.toString());
+        log.info("SENDING JOBS TO: ");
+        log.info(url);
+        log.info(jobJson.toString());
 
         CloudPublisher.postToSyncAPI(url, payload.toString());
     }
