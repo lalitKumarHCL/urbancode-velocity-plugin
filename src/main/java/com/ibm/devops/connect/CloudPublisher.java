@@ -17,8 +17,6 @@ package com.ibm.devops.connect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import groovy.transform.ToString;
-
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
 
 import net.sf.json.JSONObject;
@@ -424,84 +422,99 @@ public class CloudPublisher  {
         }
     }
 
-    public static boolean testConnection(String syncId, String syncToken, String baseUrl, String apiToken) throws URISyntaxException {
+    public static String testConnection(String syncId, String syncToken, String baseUrl, String apiToken) throws URISyntaxException {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
         String url = CloudPublisher.getGraphqlUrl();
-        log.info(url);
         CloseableHttpResponse response = null;
 
         try {
             URIBuilder builder = new URIBuilder(url);
             builder.setParameter("query", "query{integrationById(id: \"" + syncId + "\"){token,_id,userAccessKey}}");
             URI uri = builder.build();
-            log.info("uri data: " + uri.toString());
             HttpGet getMethod = new HttpGet(uri);
             getMethod.setHeader("Accept", "application/json");
             getMethod.setHeader("Authorization", "UserAccessKey " + apiToken);
+
             response = httpClient.execute(getMethod);
             log.info("response status message" + response.toString());
-            // if(response.getStatusLine().toString().contains("200")){
-            //     log.info(uri.toString());
-            //     String resStr1 = EntityUtils.toString(response.getEntity());
-            //     log.info(resStr1);
-            // }
-            // if(response.getStatusLine().toString().contains("401 Unauthorized")){
-            //     log.info(uri.toString());
-            //     String resStr2 = EntityUtils.toString(response.getEntity());
-            //     log.info(resStr2);
-            // }
             resStr = EntityUtils.toString(response.getEntity());
             log.info("Response body = " + resStr);
             JSONObject jsonresStr = JSONObject.fromObject(resStr);
             log.info("Response body object = " + jsonresStr);
-            JSONObject data = jsonresStr.getJSONObject("data");
-            log.info("data object = " + data);
-            JSONObject IDobj = data.getJSONObject("integrationById");
-            log.info("Integration object = " + IDobj);
-            String tokenby = IDobj.getString("token");
-            log.info(" token value = " + tokenby);
-            String IDvalue = data.getString("integrationById");
-            log.info(" IntegrationById value = " + IDvalue);
 
+            // JSONArray error = jsonresStr.getJSONArray("errors");
+            // log.info("error object = " + error);
+            // String message = error.optString(0);
+            // log.info("message " + message);
+            // JSONObject data = jsonresStr.getJSONObject("data");
+            // log.info("data object = " + data);
+            // String intbyid = data.getString("integrationById");
+            // log.info("intbyid = " + intbyid);
+            // String NULL = jsonresStr.getJSONObject("data").getString("integrationById");
+            // log.info("null value" + NULL);
+
+            // if (response.getStatusLine().toString().contains("200")) { 
+            //     if(((JSONObject) ((JSONObject) ((JSONObject) jsonresStr).get("data")).get("integrationById")).get("token").equals(syncToken)){
+            //         //if((jsonresStr.getObject("data").getObject("integrationById").getString("token")).equals(syncToken)){
+            //                 log.info("successfull connection");
+            //                 return "successfull connection";
+            //      }else {
+            //          log.error("please provide correct integrationID/ integration token value");
+            //          return "please provide correct integrationID/ integration token value";
+            //      }
+
+        
             if (response.getStatusLine().toString().contains("200")) {
-                if(tokenby.equals(syncToken)){
+                if((jsonresStr.getJSONObject("data").getJSONObject("integrationById").getString("token")).equals(syncToken)){
                     log.info("successfull connection");
-                    return true;
-                } else if((response.getStatusLine().getStatusCode() == 401)) {
-                    log.info("Wrong userAccessKey, Please provide right one.");     
-                } else if(IDvalue == null){
-                    log.info("please provide correct integrationId");
-                }else{
-                    log.info("Please provide correct token value"); 
+                    return "successfull connection";
+                 } else {
+                    log.error("Please provide correct Integration_token value");
+                    return "Please provide correct Integration_token value"; 
                 }
+            } else if(response.getStatusLine().toString().contains("200")){
+                 if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
+                    log.error("please provide correct integrationId");
+                     return "please provide correct integrationId";
+                } else {
+                    log.error("Please Provide correct integration ID.");
+                    return "Please Provide correct integration ID.";
+                }
+            }else if(response.getStatusLine().toString().contains("401")){
+                log.error("Wrong userAccessKey, Please provide right one.");
+                return "Wrong userAccessKey, Please provide right one."; 
             } else {
-                log.info("could not able to connect to velocity ,check the credentials provided");
-            } 
+                log.error("could not able to connect to velocity ,check the credentials provided");
+                return "could not able to connect to velocity ,check the credentials provided";
+            }
             
         } catch (IllegalStateException e) {
                 log.error("From IllegalStateException");
                 log.error("Could not connect to Velocity:" + e.getMessage());
+                return "Could not connect to Velocity:" + e.getMessage();
             } catch (UnsupportedEncodingException e) {
                 log.error("From UnsupportedEncodingException");
                 log.error("Could not connect to Velocity:" + e.getMessage());
+                return "Could not connect to Velocity:" + e.getMessage();
             } catch (ClientProtocolException e) {
                 log.error("From ClientProtocolException");
                 log.error("Could not connect to Velocity:" + e.getMessage());
+                return "Could not connect to Velocity:" + e.getMessage();
             } catch (IOException e) {
                 log.error("From IOException");
                 log.error("Could not connect to Velocity:" + e.getMessage());
+                return "Could not connect to Velocity from IO:" + e.getMessage();
             } finally {
                 if (response != null) {
                     try {
                         response.close();
                     } catch (Exception e) {
                         log.error("Could not close testconnection response");
+                        return "Could not close testconnection response";
                     }
                 }
             }
-    
-            return false;
     }
    
 }

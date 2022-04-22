@@ -306,7 +306,6 @@ public abstract class AbstractJenkinsStatus {
             JSONArray apiResponseArray = JSONArray.fromObject("[ ]");
             try{
             apiResponseArray = JSONArray.fromObject("[" + apiResponse + "]");
-            log.info("success", apiResponseArray);
             } catch (Exception e) {
                log.error(" Authorization failed, Check User and User privilages ", e);
             }

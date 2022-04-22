@@ -24,7 +24,6 @@ import jenkins.model.GlobalConfiguration;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.apache.commons.lang.StringUtils;
-import org.jfree.util.Log;
 import org.kohsuke.stapler.QueryParameter;
 
 import com.cloudbees.plugins.credentials.CredentialsMatchers;
@@ -148,21 +147,21 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         @QueryParameter("apiToken") final String apiToken )
     throws FormException {
         try {
-            boolean connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl, apiToken);
-            if (connected) {
+            String connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl, apiToken);
+            if (connected.equals("successfull connection")) {
                 boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
 
                 String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV.\n WARNING:Check the port number correctly.\n If you use Kubernetes, the default port that is exposed is 31672.";
                 if(amqpConnected) {
-                    if(connected)
+                    if(connected.equals("successfull connection"))
                     rabbitMessage = "Connected to RabbitMQ successfully. Ready to run Jenkins jobs from UCV.";
                 }
                 return FormValidation.ok("Successful connection to Velocity Services.\n" + rabbitMessage);
             } else {
-                return FormValidation.error("Could not connect to Velocity.  Please check your URL and credentials provided.");
+                return FormValidation.error(connected);
             }
         } catch (Exception e) {
-            return FormValidation.error("Could not connect to Velocity please check the credentials provided.\n (integrationID, integrationToken, UserAccessKey)");
+            return FormValidation.error("Could not connect to Velocity " + e.getMessage());
         }
     }
 
