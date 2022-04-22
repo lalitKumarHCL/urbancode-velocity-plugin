@@ -425,6 +425,10 @@ public class CloudPublisher  {
     public static String testConnection(String syncId, String syncToken, String baseUrl, String apiToken) throws URISyntaxException {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
+        String success = "";
+        String Failure = "";
+        String badToken = "";
+        String badID = "";
         String url = CloudPublisher.getGraphqlUrl();
         CloseableHttpResponse response = null;
 
@@ -466,22 +470,22 @@ public class CloudPublisher  {
 
         
             if (response.getStatusLine().toString().contains("200")) {
-                if((jsonresStr.getJSONObject("data").getJSONObject("integrationById").getString("token")).equals(syncToken)){
+                if((jsonresStr.getJSONObject("data").getJSONObject("integrationById").getString("token")).equals(syncToken)) {
                     log.info("successfull connection");
-                    return "successfull connection";
+                    success = "successfull connection";
                  } else {
-                    log.error("Please provide correct Integration_token value");
-                    return "Please provide correct Integration_token value"; 
+                    log.info("Please provide correct Integration_token value");
+                    badToken = "Please provide correct Integration_token value";
+                    return badToken; 
                 }
-            } else if(response.getStatusLine().toString().contains("200")){
-                 if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
-                    log.error("please provide correct integrationId");
-                     return "please provide correct integrationId";
-                } else {
-                    log.error("Please Provide correct integration ID.");
-                    return "Please Provide correct integration ID.";
+                if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
+                    log.info("please provide correct integrationId");
+                    Failure = "please provide correct integrationId";
+                    return Failure;
                 }
-            }else if(response.getStatusLine().toString().contains("401")){
+                return success;
+
+            } else if(response.getStatusLine().toString().contains("401")){
                 log.error("Wrong userAccessKey, Please provide right one.");
                 return "Wrong userAccessKey, Please provide right one."; 
             } else {
@@ -557,3 +561,11 @@ public class CloudPublisher  {
                     //     log.info("could not able to connect with velocity");
                     //     return false;
                     // }
+                    // else if(response.getStatusLine().toString().contains("200")){
+            //      if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
+            //         log.error("please provide correct integrationId");
+            //          return "please provide correct integrationId";
+            //     } else {
+            //         log.error("Please Provide correct integration ID.");
+            //         return "Please Provide correct integration ID.";
+            //     }
