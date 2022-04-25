@@ -20,6 +20,7 @@ public class EndpointsVelocity implements IEndpoints {
     private static final String RELEASE_EVENTS_API_PATH = "/release-events-api/";
     private static final String DOTS_PATH = "/api/v1/dots";
     private static final String PIPELINES_PATH = "/pipelines/";
+    private static final String GRAPHQL_PATH = "/release-events-api/graphql";
 
     public String getReleaseEvensApiEndpoint() {
         return getBaseUrl() + RELEASE_EVENTS_API_PATH;
@@ -36,6 +37,10 @@ public class EndpointsVelocity implements IEndpoints {
     public String getSyncApiEndpoint(String baseUrl) {
         baseUrl = removeTrailingSlash(baseUrl);
         return baseUrl + REPORTING_SYNC_PATH;
+    }
+
+    public String getGraphqlApiEndpoint() {
+        return getBaseUrl() + GRAPHQL_PATH;
     }
 
     public String getPipelinesEndpoint() {

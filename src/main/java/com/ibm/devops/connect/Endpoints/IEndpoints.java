@@ -7,6 +7,8 @@ public interface IEndpoints {
     public String getPipelinesEndpoint();
 
     public String getSyncApiEndpoint(String baseUrl);
+    
+    public String getGraphqlApiEndpoint();
 
     public String getSyncStoreEndpoint();
 

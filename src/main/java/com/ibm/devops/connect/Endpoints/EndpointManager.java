@@ -16,6 +16,10 @@ public class EndpointManager {
         return endpointProvider.getSyncApiEndpoint();
     }
 
+    public String getGraphqlApiEndpoint() {
+        return endpointProvider.getGraphqlApiEndpoint();
+    }
+
     public String getPipelinesEndpoint() {
         return endpointProvider.getPipelinesEndpoint();
     }

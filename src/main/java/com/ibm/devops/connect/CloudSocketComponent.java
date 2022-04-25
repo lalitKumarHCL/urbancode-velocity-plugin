@@ -9,6 +9,7 @@
 package com.ibm.devops.connect;
 
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 import jenkins.model.Jenkins;
@@ -73,6 +74,10 @@ public class CloudSocketComponent {
 
     public String getSyncToken() {
         return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken();
+    }
+    
+    public String getApiToken() {
+        return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getApiToken();
     }
 
     public void connectToCloudServices() throws Exception {
@@ -187,9 +192,15 @@ public class CloudSocketComponent {
                     if (envelope.getRoutingKey().contains(".heartbeat")) {
                         String syncId = getSyncId();
                         String syncToken = getSyncToken();
+                        String apiToken = getApiToken();
 
                         String url = removeTrailingSlash(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getBaseUrl());
-                        CloudPublisher.testConnection(syncId, syncToken, url);
+                        try {
+                            CloudPublisher.testConnection(syncId, syncToken, url, apiToken );
+                        } catch (URISyntaxException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
                     } else {
                         String message = new String(body, "UTF-8");
                         String payload = null;
@@ -289,7 +300,7 @@ public class CloudSocketComponent {
             if (checkQueueAvailability(channel, queueName)) {
                 channel.basicConsume(queueName, true, consumer);
             }else{
-                log.info("Queue is not yet available, will attempt to reconect shortly...");
+                log.info("Queue is not yet available, will attempt to reconnect shortly...");
                 queueIsAvailable = false;
             }
         }
