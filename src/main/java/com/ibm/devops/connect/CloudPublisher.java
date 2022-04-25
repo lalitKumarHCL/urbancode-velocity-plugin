@@ -425,10 +425,7 @@ public class CloudPublisher  {
     public static String testConnection(String syncId, String syncToken, String baseUrl, String apiToken) throws URISyntaxException {
         CloudPublisher.ensureHttpClientInitialized();
         String resStr = "";
-        String success = "";
-        String Failure = "";
-        String badToken = "";
-        String badID = "";
+        String result = "";
         String url = CloudPublisher.getGraphqlUrl();
         CloseableHttpResponse response = null;
 
@@ -447,50 +444,33 @@ public class CloudPublisher  {
             JSONObject jsonresStr = JSONObject.fromObject(resStr);
             log.info("Response body object = " + jsonresStr);
 
-            // JSONArray error = jsonresStr.getJSONArray("errors");
-            // log.info("error object = " + error);
-            // String message = error.optString(0);
-            // log.info("message " + message);
-            // JSONObject data = jsonresStr.getJSONObject("data");
-            // log.info("data object = " + data);
-            // String intbyid = data.getString("integrationById");
-            // log.info("intbyid = " + intbyid);
-            // String NULL = jsonresStr.getJSONObject("data").getString("integrationById");
-            // log.info("null value" + NULL);
-
-            // if (response.getStatusLine().toString().contains("200")) { 
-            //     if(((JSONObject) ((JSONObject) ((JSONObject) jsonresStr).get("data")).get("integrationById")).get("token").equals(syncToken)){
-            //         //if((jsonresStr.getObject("data").getObject("integrationById").getString("token")).equals(syncToken)){
-            //                 log.info("successfull connection");
-            //                 return "successfull connection";
-            //      }else {
-            //          log.error("please provide correct integrationID/ integration token value");
-            //          return "please provide correct integrationID/ integration token value";
-            //      }
-
-        
             if (response.getStatusLine().toString().contains("200")) {
-                if((jsonresStr.getJSONObject("data").getJSONObject("integrationById").getString("token")).equals(syncToken)) {
-                    log.info("successfull connection");
-                    success = "successfull connection";
-                 } else {
-                    log.info("Please provide correct Integration_token value");
-                    badToken = "Please provide correct Integration_token value";
-                    return badToken; 
+                if (jsonresStr.has("data")) {
+                    JSONObject dataObject = jsonresStr.getJSONObject("data");
+                    if (dataObject.has("integrationById")) {
+                        JSONObject integrationByIdObj = dataObject.getJSONObject("integrationById");
+                        if (integrationByIdObj.isNullObject()) {
+                            log.info("please provide correct integrationId");
+                            result = "please provide correct integrationId";
+                            return result;
+                        } else if (!(integrationByIdObj.getString("token").equals(syncToken))) {
+                            log.info("Please provide correct Integration Token value");
+                            result = "Please provide correct Integration Token value";
+                            return result;
+                        } else {
+                            log.info("successfull connection");
+                            result = "successfull connection";
+                        }
+                    }
                 }
-                if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
-                    log.info("please provide correct integrationId");
-                    Failure = "please provide correct integrationId";
-                    return Failure;
-                }
-                return success;
+            return result;
 
             } else if(response.getStatusLine().toString().contains("401")){
                 log.error("Wrong userAccessKey, Please provide right one.");
-                return "Wrong userAccessKey, Please provide right one."; 
+                return "Wrong userAccessKey, Please provide right one.";
             } else {
-                log.error("could not able to connect to velocity ,check the credentials provided");
-                return "could not able to connect to velocity ,check the credentials provided";
+                log.error("could not able to connect to velocity");
+                return "could not able to connect to velocity";
             }
             
         } catch (IllegalStateException e) {
@@ -522,50 +502,4 @@ public class CloudPublisher  {
     }
    
 }
-// CloudPublisher.ensureHttpClientInitialized();
-// String url = getSyncApiUrl(baseUrl) + GRAPHQL_PATH;
-// CloseableHttpResponse response = null;
-// try {
-// HttpGet getMethod = new HttpGet(url);
-// // postMethod = addProxyInformation(postMethod);
-// getMethod.setHeader("sync_token", syncToken);
-// getMethod.setHeader("sync_id", syncId);
-// getMethod.setHeader("instance_type", "JENKINS");
-// getMethod.setHeader("instance_id", syncId);
-// getMethod.setHeader("integration_id", syncId);
 
-// // Must include both _ and - headers because NGINX services don't pass _
-// headers by default and the original version of the Velocity services expected
-// the _ headers
-// getMethod.setHeader("sync-token", syncToken);
-// getMethod.setHeader("sync-id", syncId);
-// getMethod.setHeader("instance-type", "JENKINS");
-// getMethod.setHeader("instance-id", syncId);
-// getMethod.setHeader("integration-id", syncId);
-
-// response = httpClient.execute(getMethod);
-
-// if (response.getStatusLine().toString().contains("200")) {
-// // get 200 response
-// log.info("Connected to Velocity service successfully.");
-// return true;
-// } else {
-// log.warn("Could not authenticate to Velocity Services:");
-// log.warn(response.toString());
-// }
- // if(IDvalue.equals("null")){
-                    //     log.info("Please provide integration token correctly");
-                    //     return false;
-                    // }
-                    // else {
-                    //     log.info("could not able to connect with velocity");
-                    //     return false;
-                    // }
-                    // else if(response.getStatusLine().toString().contains("200")){
-            //      if(jsonresStr.getJSONObject("data").getString("integrationById") == null){
-            //         log.error("please provide correct integrationId");
-            //          return "please provide correct integrationId";
-            //     } else {
-            //         log.error("Please Provide correct integration ID.");
-            //         return "Please Provide correct integration ID.";
-            //     }
