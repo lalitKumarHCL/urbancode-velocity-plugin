@@ -39,7 +39,7 @@ public class ReconnectExecutor {
         @Override
         public void run()
         {
-           if (!cloudSocketInstance.isAMQPConnected() && Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+           if (!CloudSocketComponent.isAMQPConnected() && Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
                 try {
                     cloudSocketInstance.connectToAMQP();
                 } catch (Exception e) {

@@ -54,9 +54,9 @@ public class CloudSocketComponent {
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
 
-    // private static void setOtherIntegrationsExists(boolean exists) {
-    //     otherIntegrationExists = exists;
-    // }
+    private static void setOtherIntegrationsExists(boolean exists) {
+        otherIntegrationExists = exists;
+    }
 
     public CloudSocketComponent(IWorkListener workListener, String cloudUrl) {
         this.workListener = workListener;
@@ -162,16 +162,16 @@ public class CloudSocketComponent {
             }
         }
         factory.setPort(port);
-
         // Synchronized to protect manipulation of static variable
         synchronized (this) {
 
-            if(this.conn != null && this.conn.isOpen()) {
-                this.conn.abort();
+            if(conn != null && conn.isOpen()) {
+                log.info("Connection is open, doing conn.abort");
+                conn.abort();
             }
-
+            log.info("Creating new factory connection: factory.newConnection()");
             conn = factory.newConnection();
-
+            log.info("Creating connection Channel: conn.createChannel();");
             Channel channel = conn.createChannel();
 
             log.info("Connecting to RabbitMQ");
