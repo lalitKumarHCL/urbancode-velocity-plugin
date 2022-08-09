@@ -24,16 +24,18 @@ public final class Entry implements Describable<Entry> {
     private String rabbitMQPort;
     private String rabbitMQHost;
     private String apiToken;
+    private Boolean checkDuplicate;
 
     @DataBoundConstructor
     public Entry(String syncId, String syncToken, String baseUrl, String rabbitMQPort, String rabbitMQHost,
-            String apiToken) {
+            String apiToken, Boolean checkDuplicate) {
         this.syncId = syncId;
         this.syncToken = syncToken;
         this.baseUrl = baseUrl;
         this.rabbitMQPort = rabbitMQPort;
         this.rabbitMQHost = rabbitMQHost;
         this.apiToken = apiToken;
+        this.checkDuplicate = checkDuplicate;
     }
 
     public Entry(Object object) {
@@ -61,6 +63,10 @@ public final class Entry implements Describable<Entry> {
 
     public String getApiToken() {
         return apiToken;
+    }
+
+    public Boolean getCheckDuplicate() {
+        return checkDuplicate;
     }
 
     public boolean isConfigured() {
