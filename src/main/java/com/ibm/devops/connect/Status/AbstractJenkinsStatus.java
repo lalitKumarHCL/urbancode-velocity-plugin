@@ -331,7 +331,6 @@ public abstract class AbstractJenkinsStatus {
             log.warn("UnirestException: Failed to get details of requestor");
             result.put("requestor", "Jenkins");
         }
-        // log.info(result.toString());
         return result;
     }
 

@@ -52,9 +52,9 @@ public class CloudSocketComponent {
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
 
-    private static void setOtherIntegrationsExists(boolean exists) {
-        otherIntegrationExists = exists;
-    }
+    // private static void setOtherIntegrationsExists(boolean exists) {
+    //     otherIntegrationExists = exists;
+    // }
 
     public CloudSocketComponent(IWorkListener workListener, String cloudUrl) {
         this.workListener = workListener;
@@ -175,7 +175,7 @@ public class CloudSocketComponent {
 
             log.info(logPrefix + "Connecting to RabbitMQ");
 
-            String EXCHANGE_NAME = "jenkins";
+            // String EXCHANGE_NAME = "jenkins";
             String queueName = "jenkins.client." + syncId;
 
             Consumer consumer = new DefaultConsumer(channel) {
@@ -186,7 +186,6 @@ public class CloudSocketComponent {
                     if (envelope.getRoutingKey().contains(".heartbeat")) {
                         String syncId = entry.getSyncId();
                         String syncToken = entry.getSyncToken();
-
                         String url = CloudPublisher.removeTrailingSlash(entry.getBaseUrl());
                         boolean connected = CloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
@@ -256,6 +255,7 @@ public class CloudSocketComponent {
                                             HttpResponse<String> buildResponse = Unirest.get(finalBuildUrl)
                                                     .header("Authorization", authorizationHeader)
                                                     .asString();
+
                                             String buildConsole = buildResponse.getBody().toString();
                                             str.append(buildConsole);
                                         } catch (UnirestException e) {
