@@ -33,6 +33,12 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import com.ibm.devops.connect.CloudPublisher;
 import com.ibm.devops.connect.DevOpsGlobalConfiguration;
+import com.ibm.devops.connect.Entry;
+import java.util.List;
+import org.apache.commons.lang.StringUtils;
+import hudson.util.ListBoxModel;
+import org.kohsuke.stapler.QueryParameter;
+import java.util.ArrayList;
 
 public class UploadBuild extends Builder implements SimpleBuildStep {
 
@@ -50,24 +56,25 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
     private String appExtId;
     private Boolean debug;
     private Boolean fatal;
+    private String instanceBaseUrl;
 
     @DataBoundConstructor
     public UploadBuild(
-        String tenantId,
-        String id,
-        String name,
-        String versionName,
-        String revision,
-        String requestor,
-        String status,
-        String startTime,
-        String endTime,
-        String appName,
-        String appId,
-        String appExtId,
-        Boolean debug,
-        Boolean fatal
-    ) {
+            String tenantId,
+            String id,
+            String name,
+            String versionName,
+            String revision,
+            String requestor,
+            String status,
+            String startTime,
+            String endTime,
+            String appName,
+            String appId,
+            String appExtId,
+            Boolean debug,
+            Boolean fatal,
+            String instanceBaseUrl) {
         this.tenantId = tenantId;
         this.id = id;
         this.name = name;
@@ -82,31 +89,72 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         this.appExtId = appExtId;
         this.debug = debug;
         this.fatal = fatal;
+        this.instanceBaseUrl = instanceBaseUrl;
     }
 
-    public String getId() { return this.id; }
-    public String getName() {return this.name; }
-    public String getVersionName() {return this.versionName; }
-    public String getTenantId() { return this.tenantId; }
-    public String getRevision() { return this.revision; }
-    public String getRequestor() { return this.requestor; }
-    public String getStatus() { return this.status; }
-    public String getStartTime() { return this.startTime; }
-    public String getEndTime() { return this.endTime; }
-    public String getAppName() { return this.appName; }
-    public String getAppId() { return this.appId; }
-    public String getAppExtId() { return this.appExtId; }
-    public Boolean getDebug() { return this.debug; }
-    public Boolean getFatal() { return this.fatal; }
+    public String getId() {
+        return this.id;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public String getVersionName() {
+        return this.versionName;
+    }
+
+    public String getTenantId() {
+        return this.tenantId;
+    }
+
+    public String getRevision() {
+        return this.revision;
+    }
+
+    public String getRequestor() {
+        return this.requestor;
+    }
+
+    public String getStatus() {
+        return this.status;
+    }
+
+    public String getStartTime() {
+        return this.startTime;
+    }
+
+    public String getEndTime() {
+        return this.endTime;
+    }
+
+    public String getAppName() {
+        return this.appName;
+    }
+
+    public String getAppId() {
+        return this.appId;
+    }
+
+    public String getAppExtId() {
+        return this.appExtId;
+    }
+
+    public Boolean getDebug() {
+        return this.debug;
+    }
+
+    public Boolean getFatal() {
+        return this.fatal;
+    }
+
+    public String getInstanceBaseUrl() {
+        return this.instanceBaseUrl;
+    }
 
     @Override
     public void perform(final Run<?, ?> build, FilePath workspace, Launcher launcher, final TaskListener listener)
-    throws AbortException, InterruptedException, IOException {
-        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
-            listener.getLogger().println("Could not upload builds to Velocity as there is no configuration specified.");
-            return;
-        }
-
+            throws AbortException, InterruptedException, IOException {
         EnvVars envVars = build.getEnvironment(listener);
 
         String id = envVars.expand(this.id);
@@ -123,7 +171,10 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         String appExtId = envVars.expand(this.appExtId);
         String debug = envVars.expand(this.debug == null ? "" : this.debug.toString());
         String fatal = envVars.expand(this.fatal == null ? "" : this.fatal.toString());
+        String instanceBaseUrl = envVars.expand(this.instanceBaseUrl == null ? "" : this.instanceBaseUrl.toString());
 
+        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        List<Entry> finalEntriesList = CloudPublisher.getFinalEntriesList("Upload Build", instanceBaseUrl, entries);
         JSONObject payload = new JSONObject();
 
         // user-provided inputs
@@ -150,13 +201,14 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         } else {
             for (Cause cause : build.getCauses()) {
                 if (cause instanceof UserIdCause) {
-                    UserIdCause userCause = (UserIdCause)cause;
+                    UserIdCause userCause = (UserIdCause) cause;
                     payload.put("requestor", userCause.getUserName());
                 } else if (cause instanceof UpstreamCause) {
-                    UpstreamCause upstreamCause = (UpstreamCause)cause;
-                    payload.put("requestor", "Upstream job \"" + upstreamCause.getUpstreamProject() + "\", build \"" + upstreamCause.getUpstreamBuild() + "\"");
+                    UpstreamCause upstreamCause = (UpstreamCause) cause;
+                    payload.put("requestor", "Upstream job \"" + upstreamCause.getUpstreamProject() + "\", build \""
+                            + upstreamCause.getUpstreamBuild() + "\"");
                 } else if (cause instanceof RemoteCause) {
-                    RemoteCause remoteCause = (RemoteCause)cause;
+                    RemoteCause remoteCause = (RemoteCause) cause;
                     payload.put("requestor", remoteCause.getAddr());
                 } else {
                     payload.put("requestor", cause.getShortDescription());
@@ -164,7 +216,7 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
             }
         }
         if (status != null && !status.equals("")) {
-          payload.put("status", status);
+            payload.put("status", status);
         } else {
             String computedStatus = "failure";
             Result buildResult = build.getResult();
@@ -205,31 +257,42 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         if (debug.equals("true")) {
             listener.getLogger().println("payload: " + payload.toString());
         }
-
-        listener.getLogger().println("Uploading build \"" + payload.get("id") + "\" to UrbanCode Velocity...");
-        try {
-            String response = CloudPublisher.uploadBuild(payload.toString());
-            JSONObject json = JSONObject.fromObject(response);
-            if (json.isEmpty() || !json.has("_id") || json.get("_id").equals("")) {
-                throw new RuntimeException("Did not receive successful response: " + response);
-            }
-            listener.getLogger().println("Successfully uploaded build to UrbanCode Velocity.");
-        } catch (Exception ex) {
-            listener.error("Error uploading build data: " + ex.getClass() + " - " + ex.getMessage());
-            if (fatal.equals("true")) {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Failing build due to fatal=true.");
+        for (Entry entry : finalEntriesList) {
+            String logString = entry.getBaseUrl();
+            listener.getLogger().println(
+                    "Uploading build \"" + payload.get("id") + "\" to UrbanCode Velocity (" + logString + ").");
+            try {
+                if (!entry.isConfigured()) {
+                    listener.getLogger()
+                            .println("Could not upload builds to Velocity as there is no configuration specified.");
+                    return;
                 }
-                build.setResult(Result.FAILURE);
-            } else if (fatal.equals("false")) {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Not changing build result due to fatal=false.");
+                String response = CloudPublisher.uploadBuild(payload.toString(), entry);
+                JSONObject json = JSONObject.fromObject(response);
+                if (json.isEmpty() || !json.has("_id") || json.get("_id").equals("")) {
+                    throw new RuntimeException("Did not receive successful response (" + logString + "): " + response);
                 }
-            } else {
-                if (debug.equals("true")) {
-                    listener.getLogger().println("Marking build as unstable due to fatal flag not set.");
+                listener.getLogger().println("Successfully uploaded build to UrbanCode Velocity (" + logString + ").");
+            } catch (Exception ex) {
+                listener.error(
+                        "Error uploading build data (" + logString + "): " + ex.getClass() + " - " + ex.getMessage());
+                if (fatal.equals("true")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger().println("Failing build due to fatal=true (" + logString + ").");
+                    }
+                    build.setResult(Result.FAILURE);
+                } else if (fatal.equals("false")) {
+                    if (debug.equals("true")) {
+                        listener.getLogger()
+                                .println("Not changing build result due to fatal=false (" + logString + ").");
+                    }
+                } else {
+                    if (debug.equals("true")) {
+                        listener.getLogger()
+                                .println("Marking build as unstable due to fatal flag not set (" + logString + ").");
+                    }
+                    build.setResult(Result.UNSTABLE);
                 }
-                build.setResult(Result.UNSTABLE);
             }
         }
     }
@@ -261,6 +324,21 @@ public class UploadBuild extends Builder implements SimpleBuildStep {
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> jobType) {
             return true;
+        }
+
+        public ListBoxModel doFillInstanceBaseUrlItems(@QueryParameter String currentInstanceBaseUrl) {
+            // Create ListBoxModel from all projects for this AWS Device Farm account.
+            List<ListBoxModel.Option> baseUrls = new ArrayList<ListBoxModel.Option>();
+            List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class)
+                    .getEntries();
+            String all = "Upload Build to All UCV Instances";
+            baseUrls.add(new ListBoxModel.Option(all, all, all.equals(currentInstanceBaseUrl)));
+            for (Entry entry : entries) {
+                // We don't ignore case because these *should* be unique.
+                baseUrls.add(new ListBoxModel.Option(entry.getBaseUrl(), entry.getBaseUrl(),
+                        entry.getBaseUrl().equals(currentInstanceBaseUrl)));
+            }
+            return new ListBoxModel(baseUrls);
         }
     }
 }

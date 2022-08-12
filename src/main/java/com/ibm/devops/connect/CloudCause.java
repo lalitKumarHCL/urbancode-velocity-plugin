@@ -12,8 +12,9 @@ import com.ibm.devops.connect.Status.DRAData;
 import com.ibm.devops.connect.Status.SourceData;
 
 /**
-* This is the cause object that is attached to a build if it is started by UrbanCode Velocity.
-*/
+ * This is the cause object that is attached to a build if it is started by
+ * UrbanCode Velocity.
+ */
 public class CloudCause extends Cause {
 
     public enum JobStatus {
@@ -72,7 +73,7 @@ public class CloudCause extends Cause {
     }
 
     public JSONObject getSourceDataJson() {
-        if(this.sourceData == null) {
+        if (this.sourceData == null) {
             return new JSONObject();
         } else {
             return sourceData.toJson();
@@ -80,7 +81,7 @@ public class CloudCause extends Cause {
     }
 
     public JSONObject getDRADataJson() {
-        if(this.draData == null) {
+        if (this.draData == null) {
             return new JSONObject();
         } else {
             return draData.toJson();
@@ -92,7 +93,7 @@ public class CloudCause extends Cause {
             addStep(name, status, message, isFatal);
         } else {
             JSONObject obj = JSONObject.fromObject(steps.get(steps.size() - 1));
-            if(name != null) {
+            if (name != null) {
                 obj.put("name", name);
             }
             obj.put("status", status);

@@ -36,11 +36,11 @@ public class SourceData {
         this.type = type;
     }
 
-    public void setBranch (String branch) {
+    public void setBranch(String branch) {
         this.branch = branch;
     }
 
-    public void setRevision (String revision) {
+    public void setRevision(String revision) {
         this.revision = revision;
     }
 
@@ -48,11 +48,11 @@ public class SourceData {
         this.scmName = scmName;
     }
 
-    public void setType (String type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    public void setRemoteUrls (Set<String> remoteUrls) {
+    public void setRemoteUrls(Set<String> remoteUrls) {
         this.remoteUrls = remoteUrls;
     }
 
@@ -66,7 +66,7 @@ public class SourceData {
         result.put("fullMessage", fullMessage);
         result.put("shortMessage", shortMessage);
         result.put("type", type);
-        if(remoteUrls != null) {
+        if (remoteUrls != null) {
             result.put("remoteUrls", remoteUrls.toArray());
         }
 
@@ -90,7 +90,8 @@ public class SourceData {
         } catch (IOException ioEx) {
             log.warn("IOException thrown while trying to retrieve commit message in populateCommitMessage: " + ioEx);
         } catch (InterruptedException intEx) {
-            log.warn("InterruptException thrown while trying to retrieve commit message in populateCommitMessage: " + intEx);
+            log.warn("InterruptException thrown while trying to retrieve commit message in populateCommitMessage: "
+                    + intEx);
         }
     }
 }
