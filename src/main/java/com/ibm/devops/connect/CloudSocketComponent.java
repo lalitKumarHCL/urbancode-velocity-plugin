@@ -52,9 +52,9 @@ public class CloudSocketComponent {
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
 
-    // private static void setOtherIntegrationsExists(boolean exists) {
-    //     otherIntegrationExists = exists;
-    // }
+    private static void setOtherIntegrationsExists(boolean exists) {
+        otherIntegrationExists = exists;
+    }
 
     public CloudSocketComponent(IWorkListener workListener, String cloudUrl) {
         this.workListener = workListener;
@@ -161,10 +161,8 @@ public class CloudSocketComponent {
             }
         }
         factory.setPort(port);
-
         // Synchronized to protect manipulation of static variable
         synchronized (this) {
-
             if (this.conn[getInstanceNum(entry)] != null && this.conn[getInstanceNum(entry)].isOpen()) {
                 this.conn[getInstanceNum(entry)].abort();
             }
