@@ -15,6 +15,8 @@
 package com.ibm.devops.connect;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import hudson.CopyOnWrite;
 import hudson.Extension;
@@ -42,51 +44,26 @@ import jenkins.model.Jenkins;
 public class DevOpsGlobalConfiguration extends GlobalConfiguration {
 
     @CopyOnWrite
-    private volatile String syncId;
-    private volatile String syncToken;
-    private volatile String baseUrl;
     private String credentialsId;
-    private String rabbitMQPort;
-    private String rabbitMQHost;
-    private String apiToken;
+    private List<Entry> entries = new ArrayList<>();
 
     public DevOpsGlobalConfiguration() {
         load();
     }
 
-    public String getSyncId() {
-    	return syncId;
+    public List<Entry> getEntries() {
+        return entries;
     }
 
-    public void setSyncId(String syncId) {
-        this.syncId = syncId;
-        save();
-    }
-
-    public String getSyncToken() {
-    	return syncToken;
-    }
-
-    public void setSyncToken(String syncToken) {
-        this.syncToken = syncToken;
-        save();
-    }
-
-    public String getApiToken() {
-        return apiToken;
-    }
-
-    public void setApiToken(String apiToken) {
-        this.apiToken = apiToken;
-        save();
-    }
-
-    public String getBaseUrl() {
-    	return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    public void setEntries(List<Entry> entries) {
+        List<Entry> entriesFinal = new ArrayList<>();
+        for (Entry entry : entries) {
+            if (StringUtils.isNotEmpty(entry.getSyncId()) && StringUtils.isNotEmpty(entry.getBaseUrl())
+                    && StringUtils.isNotEmpty(entry.getApiToken()) && StringUtils.isNotEmpty(entry.getSyncToken())) {
+                entriesFinal.add(entry);
+            }
+        }
+        this.entries = entriesFinal;
         save();
     }
 
@@ -99,40 +76,17 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         save();
     }
 
-    public String getRabbitMQPort() {
-        return rabbitMQPort;
-    }
-
-    public String getRabbitMQHost() {
-        return rabbitMQHost;
-    }
-
-    public void setRabbitMQPort(String rabbitMQPort) {
-        this.rabbitMQPort = rabbitMQPort;
-        save();
-    }
-
-    public void setRabbitMQHost(String rabbitMQHost) {
-        this.rabbitMQHost = rabbitMQHost;
-        save();
-    }
-
     @Override
     public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
         // To persist global configuration information,
         // set that to properties and call save().
-        syncId = formData.getString("syncId");
-        syncToken = formData.getString("syncToken");
-        baseUrl = formData.getString("baseUrl");
-        credentialsId = formData.getString("credentialsId");
-        rabbitMQPort = formData.getString("rabbitMQPort");
-        rabbitMQHost = formData.getString("rabbitMQHost");
-        apiToken = formData.getString("apiToken");
+        setEntries(Collections.<Entry>emptyList());
+        req.bindJSON(this, formData);
         save();
 
         reconnectCloudSocket();
 
-        return super.configure(req,formData);
+        return super.configure(req, formData);
     }
 
     // for the future multi-region use
@@ -141,32 +95,10 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         return items;
     }
 
-    public FormValidation doTestConnection(@QueryParameter("syncId") final String syncId,
-        @QueryParameter("syncToken") final String syncToken,
-        @QueryParameter("baseUrl") final String baseUrl)
-    throws FormException {
-        try {
-            boolean connected = CloudPublisher.testConnection(syncId, syncToken, baseUrl);
-            if (connected) {
-                boolean amqpConnected = CloudSocketComponent.isAMQPConnected();
-
-                String rabbitMessage = "Not connected to RabbitMQ. Unable to run Jenkins jobs from UCV.";
-                if(amqpConnected) {
-                    rabbitMessage = "Connected to RabbitMQ successfully. Ready to run Jenkins jobs from UCV.";
-                }
-
-                return FormValidation.ok("Successful connection to Velocity Services.\n" + rabbitMessage);
-            } else {
-                return FormValidation.error("Could not connect to Velocity.  Please check your URL and credentials provided.");
-            }
-        } catch (Exception e) {
-            return FormValidation.error("Could not connect to Velocity : " + e.getMessage());
-        }
-    }
-
     /**
-    * This method is called to populate the credentials list on the Jenkins config page.
-    */
+     * This method is called to populate the credentials list on the Jenkins config
+     * page.
+     */
     public ListBoxModel doFillCredentialsIdItems(@QueryParameter("target") final String target) {
         StandardListBoxModel result = new StandardListBoxModel();
         result.includeEmptyValue();
@@ -175,20 +107,18 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
                         StandardUsernameCredentials.class,
                         Jenkins.getInstance(),
                         ACL.SYSTEM,
-                        URIRequirementBuilder.fromUri(target).build()
-                )
-        );
+                        URIRequirementBuilder.fromUri(target).build()));
         return result;
     }
 
     public StandardUsernamePasswordCredentials getCredentialsObj() {
         List<StandardUsernamePasswordCredentials> standardCredentials = CredentialsProvider.lookupCredentials(
-                    StandardUsernamePasswordCredentials.class,
-                    Jenkins.getInstance(),
-                    ACL.SYSTEM);
+                StandardUsernamePasswordCredentials.class,
+                Jenkins.getInstance(),
+                ACL.SYSTEM);
 
-        StandardUsernamePasswordCredentials credentials =
-                CredentialsMatchers.firstOrNull(standardCredentials, CredentialsMatchers.withId(this.credentialsId));
+        StandardUsernamePasswordCredentials credentials = CredentialsMatchers.firstOrNull(standardCredentials,
+                CredentialsMatchers.withId(this.credentialsId));
 
         return credentials;
     }
@@ -199,11 +129,7 @@ public class DevOpsGlobalConfiguration extends GlobalConfiguration {
         connectComputerListener.onOnline(Jenkins.getInstance().toComputer());
     }
 
-    public boolean isConfigured() {
-        return StringUtils.isNotEmpty(this.syncId) &&
-               StringUtils.isNotEmpty(this.syncToken) &&
-               StringUtils.isNotEmpty(this.baseUrl) &&
-               StringUtils.isNotEmpty(this.credentialsId) &&
-               StringUtils.isNotEmpty(this.apiToken);
+    public FormValidation doCheckCredentialsId(@QueryParameter("credentialsId") String credentialsId) {
+        return FormValidation.validateRequired(credentialsId);
     }
 }

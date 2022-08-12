@@ -49,6 +49,8 @@ import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredenti
 import java.util.Base64;
 import java.nio.charset.StandardCharsets;
 import org.apache.http.client.utils.URIBuilder;
+import com.ibm.devops.connect.Entry;
+import java.util.List;
 
 public abstract class AbstractJenkinsStatus {
     public static final Logger log = LoggerFactory.getLogger(AbstractJenkinsStatus.class);
@@ -74,11 +76,11 @@ public abstract class AbstractJenkinsStatus {
 
     protected void getOrCreateCrAction() {
 
-        if ( run != null) {
+        if (run != null) {
             List<Action> actions = run.getActions();
-            for(Action action : actions) {
+            for (Action action : actions) {
                 if (action instanceof CrAction) {
-                    crAction = (CrAction)action;
+                    crAction = (CrAction) action;
                 }
             }
 
@@ -92,7 +94,7 @@ public abstract class AbstractJenkinsStatus {
 
     protected void getEnvVars() {
         try {
-            if( run != null && taskListener != null) {
+            if (run != null && taskListener != null) {
                 this.envVars = run.getEnvironment(taskListener);
                 Set<String> keys = this.envVars.keySet();
                 List<String> keysToRemove = new ArrayList<String>();
@@ -114,18 +116,18 @@ public abstract class AbstractJenkinsStatus {
         }
     }
 
-    public JSONObject generateErrorStatus(String errorMessage) {
+    public JSONObject generateErrorStatus(String errorMessage, Entry entry) {
         JSONObject result = new JSONObject();
 
         cloudCause.addStep("Error: " + errorMessage, JobStatus.failure.toString(), "Failed due to error", true);
 
         result.put("status", JobStatus.failure.toString());
         result.put("timestamp", System.currentTimeMillis());
-        result.put("syncId", Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncId());
+        result.put("syncId", entry.getSyncId());
         result.put("steps", cloudCause.getStepsArray());
         result.put("returnProps", cloudCause.getReturnProps());
 
-        if(run != null) {
+        if (run != null) {
             result.put("url", Jenkins.getInstance().getRootUrl() + run.getUrl());
             result.put("jobExternalId", getJobUniqueIdFromBuild());
             result.put("name", run.getDisplayName());
@@ -163,16 +165,17 @@ public abstract class AbstractJenkinsStatus {
         }
 
         if (envVars != null) {
-            for(Action action : actions) {
+            for (Action action : actions) {
                 // If using Hudson Git Plugin
                 if (action instanceof BuildData) {
-                    Map<String,Build> branchMap = ((BuildData)action).getBuildsByBranchName();
+                    Map<String, Build> branchMap = ((BuildData) action).getBuildsByBranchName();
 
-                    for(Map.Entry<String, Build> branchEntry : branchMap.entrySet()) {
+                    for (Map.Entry<String, Build> branchEntry : branchMap.entrySet()) {
                         Build gitBuild = branchEntry.getValue();
 
                         if (gitBuild.getBuildNumber() == run.getNumber()) {
-                            SourceData sourceData = new SourceData(branchEntry.getKey(), gitBuild.getSHA1().getName(), "GIT");
+                            SourceData sourceData = new SourceData(branchEntry.getKey(), gitBuild.getSHA1().getName(),
+                                    "GIT");
                             sourceData.populateCommitMessage(taskListener, envVars, getWorkspaceFilePath(), gitBuild);
 
                             cloudCause.setSourceData(sourceData);
@@ -199,10 +202,11 @@ public abstract class AbstractJenkinsStatus {
 
         if (Jenkins.getInstance().getPlugin("ibm-cloud-devops") != null) {
 
-            //This block if for non-pipeline jobs to set additional data that we have access to
+            // This block if for non-pipeline jobs to set additional data that we have
+            // access to
             if (this.buildStep != null && this.buildStep instanceof EvaluateGate) {
 
-                EvaluateGate egs = (EvaluateGate)buildStep;
+                EvaluateGate egs = (EvaluateGate) buildStep;
 
                 String environment = egs.getEnvName();
                 String applicationName = egs.getApplicationName();
@@ -215,9 +219,9 @@ public abstract class AbstractJenkinsStatus {
                 data.setEnvironment(environment);
             }
 
-            for(Action action : actions) {
+            for (Action action : actions) {
                 if (action instanceof GatePublisherAction) {
-                    GatePublisherAction gpa = (GatePublisherAction)action;
+                    GatePublisherAction gpa = (GatePublisherAction) action;
 
                     String gateText = gpa.getText();
                     String riskDashboardLink = gpa.getRiskDashboardLink();
@@ -238,19 +242,19 @@ public abstract class AbstractJenkinsStatus {
     }
 
     private void evaluateEnvironment() {
-        if( envVars != null ) {
+        if (envVars != null) {
             crAction.updateEnvProperties(envVars);
         }
     }
 
-    public JSONObject generate(boolean completed) {
+    public JSONObject generate(boolean completed, Entry entry) {
         JSONObject result = new JSONObject();
 
         evaluateSourceData();
         evaluateDRAData();
         evaluateEnvironment();
 
-        if(isPipeline) {
+        if (isPipeline) {
             evaluatePipelineStep();
         } else {
             evaluateBuildStep();
@@ -268,7 +272,7 @@ public abstract class AbstractJenkinsStatus {
         result.put("status", status);
         result.put("timestamp", System.currentTimeMillis());
         result.put("startTime", run.getStartTimeInMillis());
-        result.put("syncId", Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncId());
+        result.put("syncId", entry.getSyncId());
         result.put("name", run.getDisplayName());
         result.put("steps", cloudCause.getStepsArray());
         result.put("url", Jenkins.getInstance().getRootUrl() + run.getUrl());
@@ -282,7 +286,8 @@ public abstract class AbstractJenkinsStatus {
         result.put("draData", cloudCause.getDRADataJson());
         result.put("crProperties", crAction.getCrProperties());
         result.put("envProperties", crAction.getEnvProperties());
-        StandardUsernamePasswordCredentials credentials = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();          
+        StandardUsernamePasswordCredentials credentials = Jenkins.getInstance()
+                .getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();
         String plainCredentials = credentials.getUsername() + ":" + credentials.getPassword().getPlainText();
         String encodedString = getEncodedString(plainCredentials);
         String authorizationHeader = "Basic " + encodedString;
@@ -293,29 +298,29 @@ public abstract class AbstractJenkinsStatus {
         String requestor = null;
         try {
             URIBuilder builder = new URIBuilder(baseUrl);
-            builder.setPath(builder.getPath()+path); 
+            builder.setPath(builder.getPath() + path);
             finalUrl = builder.toString();
         } catch (Exception e) {
             log.error("Caught error while building url to get requestor name: ", e);
         }
         try {
             HttpResponse<String> response = Unirest.get(finalUrl)
-                .header("Authorization", authorizationHeader)
-                .asString();
+                    .header("Authorization", authorizationHeader)
+                    .asString();
             apiResponse = response.getBody().toString();
             JSONArray apiResponseArray = JSONArray.fromObject("[" + apiResponse + "]");
             JSONObject apiResponseObject = apiResponseArray.getJSONObject(0);
-            if(apiResponseObject.has("actions")){
+            if (apiResponseObject.has("actions")) {
                 JSONArray actionsArray = JSONArray.fromObject(apiResponseObject.getString("actions"));
-                for(int i=0;i<actionsArray.size();i++){
+                for (int i = 0; i < actionsArray.size(); i++) {
                     JSONObject actionsObject = actionsArray.getJSONObject(i);
-                    if(actionsObject.has("causes")){
+                    if (actionsObject.has("causes")) {
                         JSONArray causesArray = JSONArray.fromObject(actionsObject.getString("causes"));
                         JSONObject causesObject = causesArray.getJSONObject(0);
-                        if(causesObject.has("userName")){
+                        if (causesObject.has("userName")) {
                             requestor = causesObject.getString("userName");
                             result.put("requestor", requestor);
-                        }else if(causesObject.has("shortDescription")){
+                        } else if (causesObject.has("shortDescription")) {
                             requestor = causesObject.getString("shortDescription");
                             result.put("requestor", requestor);
                         }
@@ -324,26 +329,26 @@ public abstract class AbstractJenkinsStatus {
             }
         } catch (UnirestException e) {
             log.warn("UnirestException: Failed to get details of requestor");
+            result.put("requestor", "Jenkins");
         }
-        // log.info(result.toString());
         return result;
     }
 
-	public void setRunStatus(Boolean isRunStatus) {
-		this.isRunStatus = isRunStatus;
-	}
+    public void setRunStatus(Boolean isRunStatus) {
+        this.isRunStatus = isRunStatus;
+    }
 
-	abstract protected FilePath getWorkspaceFilePath();
+    abstract protected FilePath getWorkspaceFilePath();
 
     abstract protected void evaluatePipelineStep();
 
     abstract protected void evaluateBuildStep();
 
     private static byte[] toByte(String hexString) {
-        int len = hexString.length()/2;
+        int len = hexString.length() / 2;
         byte[] result = new byte[len];
         for (int i = 0; i < len; i++) {
-            result[i] = Integer.valueOf(hexString.substring(2*i, 2*i+2), 16).byteValue();
+            result[i] = Integer.valueOf(hexString.substring(2 * i, 2 * i + 2), 16).byteValue();
         }
         return result;
     }
@@ -359,7 +364,7 @@ public abstract class AbstractJenkinsStatus {
         return new String(clearbyte, "UTF-8");
     }
 
-    private static String getEncodedString(String credentials){  
-        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));   
+    private static String getEncodedString(String credentials) {
+        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 }

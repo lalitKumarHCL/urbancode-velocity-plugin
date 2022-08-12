@@ -26,7 +26,7 @@ import com.rabbitmq.client.*;
 
 import java.io.IOException;
 import com.ibm.devops.connect.Endpoints.EndpointManager;
-
+import java.util.List;
 
 import java.security.MessageDigest;
 import javax.crypto.spec.SecretKeySpec;
@@ -40,16 +40,14 @@ import java.util.Base64;
 import java.nio.charset.StandardCharsets;
 import org.apache.http.client.utils.URIBuilder;
 
-
 public class CloudSocketComponent {
 
     public static final Logger log = LoggerFactory.getLogger(CloudSocketComponent.class);
-    private String logPrefix= "[UrbanCode Velocity] CloudSocketComponent#";
 
     final private IWorkListener workListener;
     final private String cloudUrl;
 
-    private static Connection conn;
+    private static Connection conn[] = new Connection[5];
 
     private static boolean queueIsAvailable = false;
     private static boolean otherIntegrationExists = false;
@@ -63,25 +61,11 @@ public class CloudSocketComponent {
         this.cloudUrl = cloudUrl;
     }
 
-    public boolean isRegistered() {
-        return StringUtils.isNotBlank(getSyncToken());
-    }
-
-    public String getSyncId() {
-        return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncId();
-    }
-
-    public String getSyncToken() {
-        return Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getSyncToken();
-    }
-
-    public void connectToCloudServices() throws Exception {
-        if (Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
-            logPrefix= logPrefix + "connectToCloudServices ";
-
-            connectToAMQP();
-
-            log.info(logPrefix + "Assembling list of Jenkins Jobs...");
+    public void connectToCloudServices(Entry entry) throws Exception {
+        if (entry.isConfigured()) {
+            connectToAMQP(entry);
+            log.info("[UrbanCode Velocity " + entry.getBaseUrl() + "] CloudSocketComponent#connectToCloudServices "
+                    + "Assembling list of Jenkins Jobs...");
 
             BuildJobsList buildJobList = new BuildJobsList();
             BuildJobListParamObj paramObj = buildJobList.new BuildJobListParamObj();
@@ -89,18 +73,33 @@ public class CloudSocketComponent {
         }
     }
 
-    public static boolean isAMQPConnected() {
-        if (conn == null || queueIsAvailable == false) {
+    public static int getInstanceNum(Entry entry) {
+        List<Entry> entries = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getEntries();
+        int i = 0;
+        int instanceNum = -1;
+        for (Entry entry2 : entries) {
+            if (entry.equals(entry2)) {
+                instanceNum = i;
+                break;
+            }
+            i++;
+        }
+        return instanceNum;
+    }
+
+    public static boolean isAMQPConnected(Entry entry) {
+        int instanceNum = getInstanceNum(entry);
+        if (conn[instanceNum] == null || queueIsAvailable == false) {
             return false;
         }
-        return conn.isOpen();
+        return conn[instanceNum].isOpen();
     }
-    
+
     private static byte[] toByte(String hexString) {
-        int len = hexString.length()/2;
+        int len = hexString.length() / 2;
         byte[] result = new byte[len];
         for (int i = 0; i < len; i++) {
-            result[i] = Integer.valueOf(hexString.substring(2*i, 2*i+2), 16).byteValue();
+            result[i] = Integer.valueOf(hexString.substring(2 * i, 2 * i + 2), 16).byteValue();
         }
         return result;
     }
@@ -116,16 +115,16 @@ public class CloudSocketComponent {
         return new String(clearbyte, "UTF-8");
     }
 
-    private static String getEncodedString(String credentials){  
-        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));   
+    private static String getEncodedString(String credentials) {
+        return Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
     }
 
-    public void connectToAMQP() throws Exception {
-        if (!Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).isConfigured()) {
+    public void connectToAMQP(Entry entry) throws Exception {
+        if (!entry.isConfigured()) {
             return;
         }
-
-        String syncId = getSyncId();
+        String logPrefix = "[UrbanCode Velocity " + entry.getBaseUrl() + "] ";
+        String syncId = entry.getSyncId();
 
         ConnectionFactory factory = new ConnectionFactory();
         factory.setAutomaticRecoveryEnabled(false);
@@ -136,8 +135,8 @@ public class CloudSocketComponent {
         factory.setUsername("jenkins");
         factory.setPassword("jenkins");
 
-        String host = em.getVelocityHostname();
-        String rabbitHost = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getRabbitMQHost();
+        String host = em.getVelocityHostname(entry);
+        String rabbitHost = entry.getRabbitMQHost();
         if (rabbitHost != null && !rabbitHost.equals("")) {
             try {
                 if (rabbitHost.endsWith("/")) {
@@ -146,35 +145,33 @@ public class CloudSocketComponent {
                 URL urlObj = new URL(rabbitHost);
                 host = urlObj.getHost();
             } catch (MalformedURLException e) {
-                log.warn("Provided Rabbit MQ Host is not a valid hostname. Using default : " + host, e);
+                log.warn(logPrefix + "Provided Rabbit MQ Host is not a valid hostname. Using default : " + host, e);
             }
         }
         factory.setHost(host);
 
         int port = 5672;
-        String rabbitPort = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getRabbitMQPort();
+        String rabbitPort = entry.getRabbitMQPort();
 
         if (rabbitPort != null && !rabbitPort.equals("")) {
             try {
                 port = Integer.parseInt(rabbitPort);
             } catch (NumberFormatException nfe) {
-                log.warn("Provided Rabbit MQ port is not an integer.  Using default 5672");
+                log.warn(logPrefix + "Provided Rabbit MQ port is not an integer.  Using default 5672");
             }
         }
         factory.setPort(port);
         // Synchronized to protect manipulation of static variable
         synchronized (this) {
-
-            if(conn != null && conn.isOpen()) {
-                log.info("Connection is open, doing conn.abort");
-                conn.abort();
+            if (this.conn[getInstanceNum(entry)] != null && this.conn[getInstanceNum(entry)].isOpen()) {
+                this.conn[getInstanceNum(entry)].abort();
             }
-            log.info("Creating new factory connection: factory.newConnection()");
-            conn = factory.newConnection();
-            log.info("Creating connection Channel: conn.createChannel();");
-            Channel channel = conn.createChannel();
 
-            log.info("Connecting to RabbitMQ");
+            conn[getInstanceNum(entry)] = factory.newConnection();
+
+            Channel channel = conn[getInstanceNum(entry)].createChannel();
+
+            log.info(logPrefix + "Connecting to RabbitMQ");
 
             // String EXCHANGE_NAME = "jenkins";
             String queueName = "jenkins.client." + syncId;
@@ -182,76 +179,69 @@ public class CloudSocketComponent {
             Consumer consumer = new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope,
-                                            AMQP.BasicProperties properties, byte[] body) throws IOException {
+                        AMQP.BasicProperties properties, byte[] body) throws IOException {
 
                     if (envelope.getRoutingKey().contains(".heartbeat")) {
-                        String syncId = getSyncId();
-                        String syncToken = getSyncToken();
-
-                        String url = removeTrailingSlash(Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getBaseUrl());
-                        CloudPublisher.testConnection(syncId, syncToken, url);
+                        String syncId = entry.getSyncId();
+                        String syncToken = entry.getSyncToken();
+                        String url = CloudPublisher.removeTrailingSlash(entry.getBaseUrl());
+                        boolean connected = CloudPublisher.testConnection(syncId, syncToken, url);
                     } else {
                         String message = new String(body, "UTF-8");
-                        String payload = null;
-                        String syncToken = getSyncToken();
-                        try {
-                            payload = decrypt(syncToken, message.toString());
-                            log.info("payload: " + payload);
-                        } catch (Exception e) {
-                            System.out.println("Unable to decrypt");
-                        }
-                        JSONArray incomingJobs = JSONArray.fromObject("[" + payload + "]");
-                        JSONObject incomingJob = incomingJobs.getJSONObject(0);
-                        String workId = incomingJob.getString("id");
-                        String jobName = incomingJob.getString("fullName");
-                        StandardUsernamePasswordCredentials credentials = Jenkins.getInstance().getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();          
-                        String plainCredentials = credentials.getUsername() + ":" + credentials.getPassword().getPlainText();
-                        String encodedString = getEncodedString(plainCredentials);
-                        String authorizationHeader = "Basic " + encodedString;
-                        String rootUrl = Jenkins.getInstance().getRootUrl();
-                        log.info("Root Url: " + rootUrl);
-                        String path = "job/"+jobName.replaceAll("/", "/job/")+"/api/json";
-                        log.info("Path: " + path);
-                        String finalUrl = null;
-                        String buildDetails = null;
-                        try {
-                            URIBuilder builder = new URIBuilder(rootUrl);
-                            builder.setPath(builder.getPath()+path); 
-                            builder.setParameter("fetchAllbuildDetails", "True");
-                            finalUrl = builder.toString();
-                            log.info("Final Url: " + finalUrl);
-                        } catch (Exception e) {
-                            log.warn("Caught error while building url to get details of previous builds: ", e);
-                        }
-                        try {
-                            HttpResponse<String> response = Unirest.get(finalUrl)
-                                .header("Authorization", authorizationHeader)
-                                .asString();
-                            buildDetails = response.getBody().toString();
-                            log.info("buildDetails Response: " + buildDetails);
-                        } catch (UnirestException e) {
-                            log.warn("UnirestException: Failed to get details of previous Builds. Skipping duplicate check.");
-                            System.out.println(" [x] Received '" + message + "'");
-                            CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
-                            cloudWorkListener.call("startJob", message);
-                        }
-                        if (buildDetails != null) {
+                        if (entry.getCheckDuplicate() == true) {
+                            log.info("Checking for duplicate jobs enabled...");
+                            String payload = null;
+                            String syncToken = entry.getSyncToken();
+                            try {
+                                payload = decrypt(syncToken, message.toString());
+                            } catch (Exception e) {
+                                System.out.println("Unable to decrypt");
+                            }
+                            JSONArray incomingJobs = JSONArray.fromObject("[" + payload + "]");
+                            JSONObject incomingJob = incomingJobs.getJSONObject(0);
+                            String workId = incomingJob.getString("id");
+                            String jobName = incomingJob.getString("fullName");
+                            StandardUsernamePasswordCredentials credentials = Jenkins.getInstance()
+                                    .getDescriptorByType(DevOpsGlobalConfiguration.class).getCredentialsObj();
+                            String plainCredentials = credentials.getUsername() + ":"
+                                    + credentials.getPassword().getPlainText();
+                            String encodedString = getEncodedString(plainCredentials);
+                            String authorizationHeader = "Basic " + encodedString;
+                            String rootUrl = Jenkins.getInstance().getRootUrl();
+                            String path = "job/" + jobName.replaceAll("/", "/job/") + "/api/json";
+                            String finalUrl = null;
+                            String buildDetails = null;
+                            try {
+                                URIBuilder builder = new URIBuilder(rootUrl);
+                                builder.setPath(builder.getPath() + path);
+                                builder.setQuery("fetchAllbuildDetails=True");
+                                finalUrl = builder.toString();
+                            } catch (Exception e) {
+                                log.error("Caught error while building url to get details of previous builds: ", e);
+                            }
+                            try {
+                                HttpResponse<String> response = Unirest.get(finalUrl)
+                                        .header("Authorization", authorizationHeader)
+                                        .asString();
+                                buildDetails = response.getBody().toString();
+                            } catch (UnirestException e) {
+                                log.error("UnirestException: Failed to get details of previous Builds", e);
+                            }
                             JSONArray buildDetailsArray = JSONArray.fromObject("[" + buildDetails + "]");
                             JSONObject buildDetailsObject = buildDetailsArray.getJSONObject(0);
-                            if(buildDetailsObject.has("builds")){
+                            if (buildDetailsObject.has("builds")) {
                                 JSONArray builds = JSONArray.fromObject(buildDetailsObject.getString("builds"));
                                 int buildsCount = 0;
-                                if(builds.size()<50){
-                                    buildsCount=builds.size();
-                                }
-                                else{
-                                    buildsCount=50;
+                                if (builds.size() < 50) {
+                                    buildsCount = builds.size();
+                                } else {
+                                    buildsCount = 50;
                                 }
                                 StringBuilder str = new StringBuilder();
-                                for(int i=0;i<buildsCount;i++){
+                                for (int i = 0; i < buildsCount; i++) {
                                     JSONObject build = builds.getJSONObject(i);
-                                    if(build.has("url")){
-                                        String buildUrl = build.getString("url")+"consoleText";
+                                    if (build.has("url")) {
+                                        String buildUrl = build.getString("url") + "consoleText";
                                         String finalBuildUrl = null;
                                         try {
                                             URIBuilder builder = new URIBuilder(buildUrl);
@@ -261,8 +251,9 @@ public class CloudSocketComponent {
                                         }
                                         try {
                                             HttpResponse<String> buildResponse = Unirest.get(finalBuildUrl)
-                                            .header("Authorization", authorizationHeader)
-                                            .asString();
+                                                    .header("Authorization", authorizationHeader)
+                                                    .asString();
+
                                             String buildConsole = buildResponse.getBody().toString();
                                             str.append(buildConsole);
                                         } catch (UnirestException e) {
@@ -271,46 +262,45 @@ public class CloudSocketComponent {
                                     }
                                 }
                                 String allConsoleLogs = str.toString();
-                                boolean isFound = allConsoleLogs.contains("Started due to a request from UrbanCode Velocity. Work Id: "+workId);
-                                if(isFound==true){
-                                    log.info(" =========================== Found duplicate Jenkins Job and stopped it =========================== ");
-                                }
-                                else{
-                                    System.out.println(" [x] Received '" + message + "'");
+                                boolean isFound = allConsoleLogs
+                                        .contains("Started due to a request from UrbanCode Velocity. Work Id: " + workId);
+                                if (isFound == true) {
+                                    log.info(
+                                            " =========================== Found duplicate Jenkins Job and stopped it =========================== ");
+                                } else {
+                                    System.out.println(logPrefix + "[x] Received '" + message + "'");
                                     CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
-                                    cloudWorkListener.call("startJob", message);   
-                                }    
+                                    cloudWorkListener.call("startJob", message, entry);
+                                }
                             }
-                        }
+                        } else {
+                            System.out.println(logPrefix + "[x] Received '" + message + "'");
+                            CloudWorkListener2 cloudWorkListener = new CloudWorkListener2();
+                            cloudWorkListener.call("startJob", message, entry);
+                        }  
                     }
                 }
             };
 
-            if (checkQueueAvailability(channel, queueName)) {
+            if (checkQueueAvailability(channel, queueName, entry)) {
                 channel.basicConsume(queueName, true, consumer);
-            }else{
-                log.info("Queue is not yet available, will attempt to reconect shortly...");
+            } else {
+                log.info(logPrefix + "Queue is not yet available, will attempt to reconect shortly...");
                 queueIsAvailable = false;
             }
         }
     }
 
-    public static boolean checkQueueAvailability(Channel channel, String queueName) throws IOException {
+    public static boolean checkQueueAvailability(Channel channel, String queueName, Entry entry) throws IOException {
         try {
-          channel.queueDeclarePassive(queueName);
-          queueIsAvailable = true;
-          return true;
+            channel.queueDeclarePassive(queueName);
+            queueIsAvailable = true;
+            return true;
         } catch (IOException e) {
-            log.error("Checking Queue availability threw exception: ", e);
+            log.error("[UrbanCode Velocity " + entry.getBaseUrl() + "] Checking Queue availability threw exception: ",
+                    e);
         }
         return false;
-      }
-
-    private String removeTrailingSlash(String url) {
-        if (url.endsWith("/")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
     }
 
     public String getCauseOfFailure() {

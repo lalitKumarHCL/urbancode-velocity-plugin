@@ -18,15 +18,15 @@ public class DRAData {
     public DRAData() {
     }
 
-    public void setApplicationName (String applicationName) {
+    public void setApplicationName(String applicationName) {
         this.applicationName = applicationName;
     }
 
-    public void setOrgName (String orgName) {
+    public void setOrgName(String orgName) {
         this.orgName = orgName;
     }
 
-    public String getOrgName () {
+    public String getOrgName() {
         return orgName;
     }
 
@@ -34,27 +34,27 @@ public class DRAData {
         this.toolchainName = toolchainName;
     }
 
-    public void setEnvironment (String environment) {
+    public void setEnvironment(String environment) {
         this.environment = environment;
     }
 
-    public void setBuildNumber (String buildNumber) {
+    public void setBuildNumber(String buildNumber) {
         this.buildNumber = buildNumber;
     }
 
-    public void setPolicy (String policy) {
+    public void setPolicy(String policy) {
         this.policy = policy;
     }
 
-    public void setGateText (String gateText) {
+    public void setGateText(String gateText) {
         this.gateText = gateText;
     }
 
-    public void setDecision (String decision) {
+    public void setDecision(String decision) {
         this.decision = decision;
     }
 
-    public void setRiskDahboardLink (String riskDahboardLink) {
+    public void setRiskDahboardLink(String riskDahboardLink) {
         this.riskDahboardLink = riskDahboardLink;
     }
 

@@ -70,8 +70,8 @@ import com.ibm.devops.connect.Status.JenkinsJobStatus;
  * injected, you must use IWorkListener.
  */
 public class CloudWorkListener implements IWorkListener {
-	public static final Logger log = LoggerFactory.getLogger(CloudWorkListener.class);
-    private String logPrefix= "[UrbanCode Velocity] CloudWorkListener#";
+    public static final Logger log = LoggerFactory.getLogger(CloudWorkListener.class);
+    private String logPrefix = "[UrbanCode Velocity] CloudWorkListener#";
 
     public CloudWorkListener() {
 
@@ -81,8 +81,11 @@ public class CloudWorkListener implements IWorkListener {
         success, failed, started
     }
 
-    /* (non-Javadoc)
-     * @see com.ibm.cloud.urbancode.sync.IWorkListener#call(com.ibm.cloud.urbancode.connect.client.ConnectSocket, java.lang.String, java.lang.Object)
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.ibm.cloud.urbancode.sync.IWorkListener#call(com.ibm.cloud.urbancode.
+     * connect.client.ConnectSocket, java.lang.String, java.lang.Object)
      */
     @Override
     public void call(ConnectSocket socket, String event, Object... args) {
@@ -96,19 +99,19 @@ public class CloudWorkListener implements IWorkListener {
         log.info(logPrefix + " Received event from Connect Socket");
 
         JSONArray incomingJobs = JSONArray.fromObject(args[0].toString());
+        Entry entry = (Entry) args[1];
 
-        for(int i=0; i < incomingJobs.size(); i++) {
+        for (int i = 0; i < incomingJobs.size(); i++) {
 
             WorkStatus workStatus = WorkStatus.started;
 
             JSONObject incomingJob = incomingJobs.getJSONObject(i);
             // sample job creation request from a toolchain
             if (incomingJob.has("jobType") && "new".equalsIgnoreCase(incomingJob.get("jobType").toString())) {
-            	log.info(logPrefix + "Job creation request received.");
-            	// delegating job creation to the Jenkins server
-            	JenkinsServer.createJob(incomingJob);
-        	}
-
+                log.info(logPrefix + "Job creation request received.");
+                // delegating job creation to the Jenkins server
+                JenkinsServer.createJob(incomingJob, entry);
+            }
 
             if (incomingJob.has("fullName")) {
                 String fullName = incomingJob.get("fullName").toString();
@@ -121,13 +124,13 @@ public class CloudWorkListener implements IWorkListener {
                 log.info("Item Found (1): " + item);
 
                 // If item is not retrieved, get by full name
-                if(item == null) {
+                if (item == null) {
                     item = myJenkins.getItemByFullName(fullName);
                     log.info("Item Found (2): " + item);
                 }
 
                 // If item is not retrieved, get by full name with escaped characters
-                if(item == null) {
+                if (item == null) {
                     item = myJenkins.getItemByFullName(escapeItemName(fullName));
                     log.info("Item Found (3): " + item);
                 }
@@ -135,7 +138,7 @@ public class CloudWorkListener implements IWorkListener {
                 List<ParameterValue> parametersList = generateParamList(incomingJob, getParameterTypeMap(item));
 
                 JSONObject returnProps = new JSONObject();
-                if(incomingJob.has("returnProps")) {
+                if (incomingJob.has("returnProps")) {
                     returnProps = incomingJob.getJSONObject("returnProps");
                 }
 
@@ -143,18 +146,20 @@ public class CloudWorkListener implements IWorkListener {
                 Queue.Item queuedItem = null;
                 String errorMessage = null;
 
-                if(item instanceof AbstractProject) {
-                    AbstractProject abstractProject = (AbstractProject)item;
+                if (item instanceof AbstractProject) {
+                    AbstractProject abstractProject = (AbstractProject) item;
 
-                    queuedItem = ParameterizedJobMixIn.scheduleBuild2(abstractProject, 0, new ParametersAction(parametersList), new CauseAction(cloudCause));
+                    queuedItem = ParameterizedJobMixIn.scheduleBuild2(abstractProject, 0,
+                            new ParametersAction(parametersList), new CauseAction(cloudCause));
 
                     if (queuedItem == null) {
                         errorMessage = "Could not start parameterized build.";
                     }
                 } else if (item instanceof WorkflowJob) {
-                    WorkflowJob workflowJob = (WorkflowJob)item;
+                    WorkflowJob workflowJob = (WorkflowJob) item;
 
-                    QueueTaskFuture queuedTask = workflowJob.scheduleBuild2(0, new ParametersAction(parametersList), new CauseAction(cloudCause));
+                    QueueTaskFuture queuedTask = workflowJob.scheduleBuild2(0, new ParametersAction(parametersList),
+                            new CauseAction(cloudCause));
 
                     if (queuedTask == null) {
                         errorMessage = "Could not start pipeline build.";
@@ -167,17 +172,17 @@ public class CloudWorkListener implements IWorkListener {
                     log.warn(errorMessage);
                 }
 
-                if( errorMessage != null ) {
+                if (errorMessage != null) {
                     JenkinsJobStatus erroredJobStatus = new JenkinsJobStatus(null, cloudCause, null, null, true, true);
-                    JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage);
-                    CloudPublisher.uploadJobStatus(statusUpdate);
-
+                    JSONObject statusUpdate = erroredJobStatus.generateErrorStatus(errorMessage, entry);
+                    CloudPublisher.uploadJobStatus(statusUpdate, entry);
                     workStatus = WorkStatus.failed;
                 }
 
             }
 
-            sendResult(socket, incomingJobs.getJSONObject(i).get("id").toString(), workStatus, "This work has been started");
+            sendResult(socket, incomingJobs.getJSONObject(i).get("id").toString(), workStatus,
+                    "This work has been started");
         }
 
     }
@@ -188,21 +193,20 @@ public class CloudWorkListener implements IWorkListener {
             json.put("id", id);
             json.put("status", status.name());
             json.put("description", comment);
-        }
-        catch (JSONException e) {
+        } catch (JSONException e) {
             throw new RuntimeException("Error constructing work result JSON", e);
         }
         socket.emit("set_work_status", json.toString());
     }
 
-    private List<ParameterValue> generateParamList (JSONObject incomingJob, Map<String, String> typeMap) {
+    private List<ParameterValue> generateParamList(JSONObject incomingJob, Map<String, String> typeMap) {
         ArrayList<ParameterValue> result = new ArrayList<ParameterValue>();
 
-        if(incomingJob.has("props")) {
+        if (incomingJob.has("props")) {
             JSONObject props = incomingJob.getJSONObject("props");
             Iterator<String> keys = props.keys();
-            while( keys.hasNext() ) {
-                String key = (String)keys.next();
+            while (keys.hasNext()) {
+                String key = (String) keys.next();
                 Object value = props.get(key);
                 String type = typeMap.get(key);
 
@@ -212,18 +216,18 @@ public class CloudWorkListener implements IWorkListener {
                 System.out.println("->\t\t" + value);
                 System.out.println("->\t\t" + type);
 
-                if(type == null) {
+                if (type == null) {
 
-                } else if(type.equalsIgnoreCase("BooleanParameterDefinition")) {
-                    if(props.get(key).getClass().equals(String.class)) {
-                        Boolean p = Boolean.parseBoolean((String)props.get(key));
+                } else if (type.equalsIgnoreCase("BooleanParameterDefinition")) {
+                    if (props.get(key).getClass().equals(String.class)) {
+                        Boolean p = Boolean.parseBoolean((String) props.get(key));
                         result.add(new BooleanParameterValue(key, p));
                     } else {
-                        result.add(new BooleanParameterValue(key, (boolean)props.get(key)));
+                        result.add(new BooleanParameterValue(key, (boolean) props.get(key)));
                     }
-                } else if(type.equalsIgnoreCase("PasswordParameterDefinition")) {
+                } else if (type.equalsIgnoreCase("PasswordParameterDefinition")) {
                     result.add(new PasswordParameterValue(key, props.get(key).toString()));
-                } else if(type.equalsIgnoreCase("TextParameterDefinition")) {
+                } else if (type.equalsIgnoreCase("TextParameterDefinition")) {
                     result.add(new TextParameterValue(key, props.get(key).toString()));
                 } else {
                     result.add(new StringParameterValue(key, props.get(key).toString()));
@@ -237,28 +241,30 @@ public class CloudWorkListener implements IWorkListener {
     private Map<String, String> getParameterTypeMap(Item item) {
         Map<String, String> result = new HashMap<String, String>();
 
-        if(item instanceof WorkflowJob) {
-            List<JobProperty<? super WorkflowJob>> properties = ((WorkflowJob)item).getAllProperties();
+        if (item instanceof WorkflowJob) {
+            List<JobProperty<? super WorkflowJob>> properties = ((WorkflowJob) item).getAllProperties();
 
-			for(JobProperty property : properties) {
-				if (property instanceof ParametersDefinitionProperty) {
-					List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty)property).getParameterDefinitions();
-					for (ParameterDefinition paramDef : paraDefs) {
+            for (JobProperty property : properties) {
+                if (property instanceof ParametersDefinitionProperty) {
+                    List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty) property)
+                            .getParameterDefinitions();
+                    for (ParameterDefinition paramDef : paraDefs) {
                         result.put(paramDef.getName(), paramDef.getType());
-					}
-				}
-			}
-        } else if(item instanceof AbstractItem) {
-            List<Action> actions = ((AbstractItem)item).getActions();
+                    }
+                }
+            }
+        } else if (item instanceof AbstractItem) {
+            List<Action> actions = ((AbstractItem) item).getActions();
 
-			for(Action action : actions) {
-				if (action instanceof ParametersDefinitionProperty) {
-					List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty)action).getParameterDefinitions();
-					for (ParameterDefinition paramDef : paraDefs) {
+            for (Action action : actions) {
+                if (action instanceof ParametersDefinitionProperty) {
+                    List<ParameterDefinition> paraDefs = ((ParametersDefinitionProperty) action)
+                            .getParameterDefinitions();
+                    for (ParameterDefinition paramDef : paraDefs) {
                         result.put(paramDef.getName(), paramDef.getType());
-					}
-				}
-			}
+                    }
+                }
+            }
         }
 
         return result;

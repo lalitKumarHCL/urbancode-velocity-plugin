@@ -61,7 +61,7 @@ public class ContinuousReleaseProperties extends Builder implements SimpleBuildS
             throws AbortException, InterruptedException, IOException {
         CrAction action = build.getAction(CrAction.class);
 
-        if(action == null) {
+        if (action == null) {
             action = new CrAction();
             build.addAction(action);
         }
